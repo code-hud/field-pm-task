@@ -4,8 +4,8 @@
 #   docker compose up --build --scale web=0         # headless (no UI), everything else
 #
 # Two Node services (trading-api, fraud-service) talk to Postgres and report traces +
-# metrics to Honeycomb over OTLP. A load generator drives realistic traffic so there
-# is always something to look at. Fill in your Honeycomb API key in .env first.
+# metrics to New Relic over OTLP. A load generator drives realistic traffic so there
+# is always something to look at. Fill in your New Relic license key in .env first.
 name: field-pm-task
 
 # Shared OpenTelemetry wiring. The register hook must load before Express and pg, which
@@ -16,6 +16,9 @@ x-otel-env: &otel-env
   OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
   OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
   OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-http/protobuf}
+  OTEL_EXPORTER_OTLP_COMPRESSION: ${OTEL_EXPORTER_OTLP_COMPRESSION:-gzip}
+  # New Relic ingests OTLP metrics as delta temporality.
+  OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: ${OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE:-delta}
   OTEL_TRACES_EXPORTER: otlp
   OTEL_METRICS_EXPORTER: otlp
   OTEL_LOGS_EXPORTER: otlp

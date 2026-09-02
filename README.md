@@ -1,7 +1,7 @@
 # Field PM Task — Trading Platform
 
 A small but realistic trading platform, instrumented with **OpenTelemetry** and reporting
-to **Honeycomb**. You'll run it locally, watch its traffic, and reason about what the data
+to **New Relic**. You'll run it locally, watch its traffic, and reason about what the data
 does and doesn't tell you. Full instructions are in the assignment you were sent — this
 file is just how to get it running.
 
@@ -15,7 +15,7 @@ file is just how to get it running.
                                 ▼
                             Postgres
 
-  trading-api and fraud-service export traces + metrics (OTLP) ──▶ Honeycomb
+  trading-api and fraud-service export traces + metrics (OTLP) ──▶ New Relic
 ```
 
 - **trading-api** — auth, portfolios, orders, and a simulated market. Owns the Postgres database.
@@ -25,14 +25,14 @@ file is just how to get it running.
 
 ## Setup
 
-You need **Docker** and a free **Honeycomb** account.
+You need **Docker** and a free **New Relic** account.
 
-1. Sign up at https://www.honeycomb.io (free tier; Gmail works) → **Account → API Keys**
-   → create an **ingest key**.
+1. Sign up at https://newrelic.com (free tier; Gmail works) → **Account → API keys**
+   → copy your **INGEST - LICENSE** key.
 2. Configure the stack:
    ```bash
    cp .env.example .env
-   # edit .env: paste your key into OTEL_EXPORTER_OTLP_HEADERS (x-honeycomb-team=...)
+   # edit .env: paste your key into OTEL_EXPORTER_OTLP_HEADERS (api-key=...)
    ```
 3. Start it:
    ```bash
@@ -41,8 +41,8 @@ You need **Docker** and a free **Honeycomb** account.
    ```
    The database migrates and seeds itself on first boot (~30–60s).
 
-Within a minute or two you should see `trading-api` and `fraud-service` in Honeycomb
-(each service is its own dataset), with traces for the order flow.
+Within a minute or two, in New Relic under **APM & Services** (and **Distributed tracing**)
+you should see `trading-api` and `fraud-service`, with traces for the order flow.
 
 Running low on resources or hitting setup trouble? **Contact us** — don't lose time on it.
 
