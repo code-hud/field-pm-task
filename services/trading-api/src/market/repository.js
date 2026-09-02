@@ -57,7 +57,7 @@ const QUOTE_SELECT = `
          i.name, i.sector, i.industry, i.currency, i.exchange, i.avg_volume, i.market_cap_b,
          i.beta, i.pe_ratio, i.dividend_yield, i.fifty_two_week_high, i.fifty_two_week_low
   FROM quotes q
-  JOIN instruments i USING (symbol)
+  JOIN stocks i USING (symbol)
 `;
 
 // Whitelist, not interpolation — these map to real columns and nothing else can.
@@ -116,7 +116,7 @@ async function listQuotes({
   const { params, clause } = quoteFilters({ search, sector });
 
   // Secondary sort on symbol: without it a page boundary can repeat or drop a row
-  // when several instruments tie on the sort column.
+  // when several stocks tie on the sort column.
   let sql = `${QUOTE_SELECT} ${clause} ORDER BY ${column} ${direction}, q.symbol ASC`;
 
   const paged = Number.isFinite(limit) && limit > 0;
@@ -145,7 +145,7 @@ async function listQuotes({
 
   const { params: countParams, clause: countClause } = quoteFilters({ search, sector });
   const { rows: countRows } = await query(
-    `SELECT count(*)::int AS n FROM quotes q JOIN instruments i USING (symbol) ${countClause}`,
+    `SELECT count(*)::int AS n FROM quotes q JOIN stocks i USING (symbol) ${countClause}`,
     countParams,
   );
   return { quotes, total: countRows[0].n };
@@ -215,12 +215,12 @@ async function getSparklines(symbols, points = 24) {
  * The history endpoint asks only to choose between a 404 and an empty bar list, and
  * it was asking `getQuote`, which selects eighteen columns across two tables and
  * derives a bid, an ask and a spread that nothing then reads. The join stays: "known"
- * has to keep meaning what it meant — a quote row with an instrument behind it — and
- * not quietly widen to instruments that were never priced.
+ * has to keep meaning what it meant — a quote row with an stock behind it — and
+ * not quietly widen to stocks that were never priced.
  */
 async function isKnownSymbol(symbol) {
   const { rows } = await query(
-    'SELECT 1 FROM quotes q JOIN instruments i USING (symbol) WHERE q.symbol = $1',
+    'SELECT 1 FROM quotes q JOIN stocks i USING (symbol) WHERE q.symbol = $1',
     [String(symbol).toUpperCase()],
   );
   return rows.length > 0;
@@ -336,13 +336,13 @@ async function getHistory(symbol, range = '1D') {
 
 /**
  * Three ordered top-N queries rather than one full scan sliced three ways. At 25
- * instruments pulling the whole board into JS and sorting it was fine; at 503 it
+ * stocks pulling the whole board into JS and sorting it was fine; at 503 it
  * meant serializing and presenting 1,500 quotes to return 15.
  */
 async function getMovers(count = 5) {
   // `countTotal: false` on all three. Each of these asks for a top-N and reads only
   // the rows; without it, every request ran three `count(*)`s over
-  // `quotes JOIN instruments` and discarded all three answers — because a top-5 that
+  // `quotes JOIN stocks` and discarded all three answers — because a top-5 that
   // returns exactly 5 rows does not satisfy `quotes.length < limit`. On a board that
   // is polled, that was three full counts a tick for nothing.
   const [gainers, losers, mostActive] = await Promise.all([
@@ -366,7 +366,7 @@ async function getMovers(count = 5) {
  */
 async function getSectorDetail(sector, leaders = 5) {
   const { rows } = await query(
-    `SELECT count(*)::int                                                    AS instruments,
+    `SELECT count(*)::int                                                    AS stocks,
             avg((q.price - q.previous_close) / q.previous_close * 100)       AS equal_weighted,
             -- Cap-weighted: the change each name contributes in proportion to its
             -- size, which is what an index tracking this sector would actually do.
@@ -378,7 +378,7 @@ async function getSectorDetail(sector, leaders = 5) {
             count(*) FILTER (WHERE q.price < q.previous_close)::int          AS declining,
             count(*) FILTER (WHERE q.price = q.previous_close)::int          AS unchanged,
             max(q.updated_at)                                                AS updated_at
-     FROM quotes q JOIN instruments i USING (symbol)
+     FROM quotes q JOIN stocks i USING (symbol)
      WHERE i.sector = $1`,
     [sector],
   );
@@ -387,7 +387,7 @@ async function getSectorDetail(sector, leaders = 5) {
   // count(*) over no rows is 0, not no row — so an unknown sector arrives here as a
   // populated row of zeroes rather than as undefined. The caller needs to tell "no
   // such sector" from "a sector where nothing moved", and only this can.
-  if (summary.instruments === 0) return null;
+  if (summary.stocks === 0) return null;
 
   const [best, worst] = await Promise.all([
     listQuotes({ sector, sort: 'changePercent', order: 'desc', limit: leaders, countTotal: false }),
@@ -396,7 +396,7 @@ async function getSectorDetail(sector, leaders = 5) {
 
   return {
     sector,
-    instruments: summary.instruments,
+    stocks: summary.stocks,
     equalWeightedChangePercent: round2(summary.equal_weighted),
     capWeightedChangePercent: round2(summary.cap_weighted),
     marketCapB: round2(summary.market_cap_b),
@@ -419,26 +419,26 @@ async function getSectorDetail(sector, leaders = 5) {
 async function getSectorSummary() {
   const { rows } = await query(
     `SELECT i.sector,
-            count(*)::int AS instruments,
+            count(*)::int AS stocks,
             avg((q.price - q.previous_close) / q.previous_close * 100) AS average_change_percent
-     FROM quotes q JOIN instruments i USING (symbol)
+     FROM quotes q JOIN stocks i USING (symbol)
      GROUP BY i.sector
      ORDER BY average_change_percent DESC`,
   );
   return rows.map((row) => ({
     sector: row.sector,
-    instruments: row.instruments,
+    stocks: row.stocks,
     averageChangePercent: round2(row.average_change_percent),
   }));
 }
 
-const countInstruments = async () => {
-  const { rows } = await query('SELECT count(*)::int AS n FROM instruments');
+const countStocks = async () => {
+  const { rows } = await query('SELECT count(*)::int AS n FROM stocks');
   return rows[0].n;
 };
 
 const listSectors = async () => {
-  const { rows } = await query('SELECT DISTINCT sector FROM instruments ORDER BY sector');
+  const { rows } = await query('SELECT DISTINCT sector FROM stocks ORDER BY sector');
   return rows.map((row) => row.sector);
 };
 
@@ -453,6 +453,6 @@ module.exports = {
   getMovers,
   getSectorDetail,
   getSectorSummary,
-  countInstruments,
+  countStocks,
   listSectors,
 };

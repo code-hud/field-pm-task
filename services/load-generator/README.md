@@ -53,13 +53,13 @@ a final summary, and exits 0.
 ## What the users do
 
 Each activity is a short journey rather than one request, because that is how the API
-is really used — nobody opens an instrument without then loading its chart. Weights
+is really used — nobody opens an stock without then loading its chart. Weights
 are relative:
 
 | | weight | |
 |---|---|---|
 | `browse-markets` | 22 | list quotes with a random sort, then movers or sectors |
-| `open-instrument` | 20 | a quote, its chart, sometimes a second range |
+| `open-stock` | 20 | a quote, its chart, sometimes a second range |
 | `check-portfolio` | 18 | the portfolio, often the allocation too |
 | `search-filter` | 12 | a search, then a sector filter |
 | `review-performance` | 8 | the equity curve at one or two ranges |
@@ -237,8 +237,8 @@ tick and hit a cold process together.
 **Memory is flat by construction.** Latency goes into 80 fixed logarithmic buckets
 per endpoint — 80 integers whether that endpoint has served ten requests or ten
 billion — and percentiles are read back off the buckets. Metrics are keyed by route
-template (`GET /api/market/instruments/:symbol`), never by URL, so a path parameter
-cannot add a map entry per symbol. The instrument universe is replaced wholesale on
+template (`GET /api/market/stocks/:symbol`), never by URL, so a path parameter
+cannot add a map entry per symbol. The stock universe is replaced wholesale on
 each listing rather than merged into. The per-request deadline and shutdown hook are
 torn down explicitly instead of being left to `AbortSignal.timeout`/`AbortSignal.any`,
 both of which leave an armed timer or a listener on a process-lifetime signal behind
@@ -260,7 +260,7 @@ the process exits 0. A second signal exits at once.
   failures:     none
   trades:       6 filled  0 rejected  (6 filled since start)
   endpoint                                        req   req/s  fail     p50     p95
-  GET /api/market/instruments                     276    4.60     0    38ms   133ms
+  GET /api/market/stocks                     276    4.60     0    38ms   133ms
   ...
   since start:  1295 req  21.57 req/s  ok 100.0%  failed 0  p95 116ms
 ```

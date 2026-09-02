@@ -55,20 +55,20 @@ demo with no extra step. Both behaviours are switchable
 | `src/orders/` | market order entry — fills into `orders`, `trades`, `lots`, `lot_closures`, and `accounts.cash` |
 | `src/fraud/` | the call to the fraud service, and what an unanswerable check means |
 | `src/accounts/` | find-or-create on first sign-in |
-| `src/data/instruments.js` | the universe: real S&P 500 tickers, invented numbers |
-| `src/data/sp500-constituents.csv` | the committed constituent list — provenance in `instruments.js` |
+| `src/data/stocks.js` | the universe: real S&P 500 tickers, invented numbers |
+| `src/data/sp500-constituents.csv` | the committed constituent list — provenance in `stocks.js` |
 | `src/lib/random.js` | seeded PRNG — the data layer never calls `Math.random` |
 
-Set the `OTEL_EXPORTER_OTLP_*` variables (see the root README) to report traces + metrics to New Relic; with no
+Set the `OTEL_EXPORTER_OTLP_*` variables (see the root README) to report traces to the configured OTLP backend; with no
 key the API logs one line at boot and runs exactly as it did before, which is how the
 tests and CI run it. See *Runtime observability* in the root README for what is
 covered and why this service is CommonJS.
 
 **Charts are the one market read that can be revalidated.** Quotes are repriced every
-two seconds, so `/api/market/instruments` is a different answer every time it is asked.
+two seconds, so `/api/market/stocks` is a different answer every time it is asked.
 Bars are not: `daily_bars` is the seeder's and is never written again, and `intraday_bars`
 is only touched during the regular session, and then only for the minute in progress. So
-`GET /api/market/instruments/:symbol/history` carries an `ETag` built from the newest bar
+`GET /api/market/stocks/:symbol/history` carries an `ETag` built from the newest bar
 and answers a matching `If-None-Match` with a `304` — for 5D through 1Y always, and for 1D
 outside 09:30–16:00 ET. `Cache-Control: private, no-cache` rather than a lifetime, because
 `--reset` rewrites the whole calendar underneath a client that was told it could stop

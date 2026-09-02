@@ -74,7 +74,7 @@ export function TradeTicket({ symbol, side: initialSide = 'BUY', onClose, onFill
     if (dialog && !dialog.open) dialog.showModal();
   }, []);
 
-  const quote = useLiveQuery((signal) => api.instrument(symbol, signal), {
+  const quote = useLiveQuery((signal) => api.stock(symbol, signal), {
     intervalMs: 4000,
     deps: [symbol],
   });

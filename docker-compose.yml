@@ -3,27 +3,33 @@
 #   docker compose up --build                       # full stack + UI on :8080
 #   docker compose up --build --scale web=0         # headless (no UI), everything else
 #
-# Two Node services (trading-api, fraud-service) talk to Postgres and report traces +
-# metrics to New Relic over OTLP. A load generator drives realistic traffic so there
-# is always something to look at. Fill in your New Relic license key in .env first.
+# Two Node services (trading-api, fraud-service) talk to Postgres and report traces to a
+# local Jaeger over OTLP. A load generator drives realistic traffic so there is always
+# something to look at. No account or key needed — open Jaeger at http://localhost:16686.
 name: field-pm-task
 
-# Shared OpenTelemetry wiring. The register hook must load before Express and pg, which
-# is what NODE_OPTIONS does; everything else is read from these OTEL_* variables. With no
-# endpoint set the services still run — they just cannot export.
+# Shared OpenTelemetry wiring. The ./otel.js preload must load before Express and pg (that
+# is what NODE_OPTIONS does); it also drops noisy Express middleware spans. Everything else
+# is read from these OTEL_* variables. Jaeger is traces-only, so metrics/logs are off.
 x-otel-env: &otel-env
-  NODE_OPTIONS: "--require @opentelemetry/auto-instrumentations-node/register"
-  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
-  OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
-  OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-http/protobuf}
-  OTEL_EXPORTER_OTLP_COMPRESSION: ${OTEL_EXPORTER_OTLP_COMPRESSION:-gzip}
-  # New Relic ingests OTLP metrics as delta temporality.
-  OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: ${OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE:-delta}
+  NODE_OPTIONS: "--require ./otel.js"
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4318}
+  OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
   OTEL_TRACES_EXPORTER: otlp
-  OTEL_METRICS_EXPORTER: otlp
-  OTEL_LOGS_EXPORTER: otlp
+  OTEL_METRICS_EXPORTER: none
+  OTEL_LOGS_EXPORTER: none
 
 services:
+  # Local trace backend. Open the UI at http://localhost:16686 — no account, no key.
+  # OTLP receivers (4317/4318) stay internal; the services reach it at jaeger:4318.
+  jaeger:
+    image: jaegertracing/all-in-one:1.62.0
+    environment:
+      COLLECTOR_OTLP_ENABLED: 'true'
+    ports:
+      - '${JAEGER_UI_PORT:-16686}:16686'
+    restart: unless-stopped
+
   postgres:
     image: postgres:17-alpine
     command:
@@ -82,6 +88,8 @@ services:
         condition: service_healthy
       fraud-service:
         condition: service_started
+      jaeger:
+        condition: service_started
     ports:
       - '${API_PORT:-4000}:4000'
     restart: unless-stopped
@@ -97,6 +105,9 @@ services:
     volumes:
       - ./services/fraud-service/src:/app/src
     command: ['npm', 'run', 'dev']
+    depends_on:
+      jaeger:
+        condition: service_started
     ports:
       - '${FRAUD_PORT:-4100}:4100'
     restart: unless-stopped

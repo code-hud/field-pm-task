@@ -25,7 +25,7 @@ healthRouter.get('/ready', async (_req, res) => {
     res.status(ready ? 200 : 503).json({
       status: ready ? 'ready' : 'empty',
       database: 'up',
-      instruments: rows[0].n,
+      stocks: rows[0].n,
       marketWriter: marketTicker.isLeader,
       ticks: marketTicker.tickCount,
     });

@@ -18,7 +18,7 @@ import { metrics } from './metrics.js';
 /**
  * Unwinds the current journey without unwinding the user. Thrown by `step` when a
  * request fails in a way that makes the rest of the journey pointless — there is no
- * chart to open if the instrument list never arrived.
+ * chart to open if the stock list never arrived.
  */
 class ActivityAborted extends Error {
   constructor(result) {
@@ -117,8 +117,8 @@ export class VirtualUser {
     const symbols = knownSymbols();
     if (symbols.length > 0) return pick(this.rng, symbols);
 
-    const listing = await this.step(api.instruments(this.token, { limit: 25 }));
-    const returned = listing.body?.instruments ?? [];
+    const listing = await this.step(api.stocks(this.token, { limit: 25 }));
+    const returned = listing.body?.stocks ?? [];
     return returned.length > 0 ? pick(this.rng, returned).symbol : null;
   }
 

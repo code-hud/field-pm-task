@@ -47,8 +47,8 @@ const order = (token, payload) =>
 const unheldSymbol = async (token) => {
   const { body: portfolio } = await authed(token, '/api/portfolio');
   const held = new Set(portfolio.positions.map((position) => position.symbol));
-  const { body: market } = await authed(token, '/api/market/instruments');
-  return market.instruments.find((quote) => !held.has(quote.symbol)).symbol;
+  const { body: market } = await authed(token, '/api/market/stocks');
+  return market.stocks.find((quote) => !held.has(quote.symbol)).symbol;
 };
 
 const accountIdOf = async (username) => {

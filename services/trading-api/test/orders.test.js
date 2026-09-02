@@ -48,8 +48,8 @@ const order = (token, payload) =>
 const unheldSymbol = async (token) => {
   const { body: portfolio } = await authed(token, '/api/portfolio');
   const held = new Set(portfolio.positions.map((position) => position.symbol));
-  const { body: market } = await authed(token, '/api/market/instruments');
-  return market.instruments.find((quote) => !held.has(quote.symbol)).symbol;
+  const { body: market } = await authed(token, '/api/market/stocks');
+  return market.stocks.find((quote) => !held.has(quote.symbol)).symbol;
 };
 
 before(async () => {
@@ -266,7 +266,7 @@ describe('order entry', () => {
     const token = await signIn('racer');
     const symbol = await unheldSymbol(token);
     const { body: before } = await authed(token, '/api/portfolio');
-    const { body: quote } = await authed(token, `/api/market/instruments/${symbol}`);
+    const { body: quote } = await authed(token, `/api/market/stocks/${symbol}`);
 
     // Each order alone is affordable; together they are not. Without the row lock
     // both would read the same balance and both would pass the check.

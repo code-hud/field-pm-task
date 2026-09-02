@@ -70,7 +70,7 @@ export function MarketsPage() {
   });
   const market = useLiveQuery(
     (signal) =>
-      api.instruments(
+      api.stocks(
         { search: debouncedSearch, sector, sort: sort.key, order: sort.order, limit: PAGE_SIZE, offset },
         signal,
       ),
@@ -84,7 +84,7 @@ export function MarketsPage() {
         : { key, order: key === 'symbol' || key === 'sector' ? 'asc' : 'desc' },
     );
 
-  const instruments = market.data?.instruments ?? [];
+  const stocks = market.data?.stocks ?? [];
   const total = market.data?.total ?? 0;
 
   return (
@@ -148,7 +148,7 @@ export function MarketsPage() {
           {market.error
             ? 'Unavailable'
             : market.data
-              ? `${total} instrument${total === 1 ? '' : 's'}${search || sector ? ' matching' : ' available'}`
+              ? `${total} stock${total === 1 ? '' : 's'}${search || sector ? ' matching' : ' available'}`
               : 'Loading…'}
         </span>
       </div>
@@ -179,8 +179,8 @@ export function MarketsPage() {
           <LoadingState height={420} label="Loading market data" />
         ) : market.error ? (
           <ErrorState error={market.error} onRetry={market.refresh} title="Could not load market data" />
-        ) : instruments.length === 0 ? (
-          <EmptyState title="No instruments match those filters" hint="Try clearing the search or sector." />
+        ) : stocks.length === 0 ? (
+          <EmptyState title="No stocks match those filters" hint="Try clearing the search or sector." />
         ) : (
           <div className={`tablewrap${market.isRefreshing ? ' chart--stale' : ''}`}>
             <table className="table">
@@ -218,7 +218,7 @@ export function MarketsPage() {
                 </tr>
               </thead>
               <tbody>
-                {instruments.map((quote) => (
+                {stocks.map((quote) => (
                   <tr key={quote.symbol}>
                     <td>
                       <span className="symbol">
@@ -264,14 +264,14 @@ export function MarketsPage() {
             </table>
           </div>
         )}
-        {instruments.length > 0 && (
+        {stocks.length > 0 && (
           <Pager
             offset={offset}
-            count={instruments.length}
+            count={stocks.length}
             total={total}
             pageSize={PAGE_SIZE}
             onChange={setOffset}
-            label="Instrument pages"
+            label="Stock pages"
           />
         )}
       </section>
@@ -329,7 +329,7 @@ function SectorDetailCard({ sector, query }) {
             {query.error
               ? 'Unavailable'
               : detail && !stale
-                ? `${detail.instruments} instruments · the same day measured two ways`
+                ? `${detail.stocks} stocks · the same day measured two ways`
                 : 'Loading…'}
           </p>
         </div>
@@ -406,7 +406,7 @@ function MoversBoard({ query, count, onCountChange }) {
             {query.error
               ? 'Unavailable'
               : data
-                ? `Across all instruments, as of ${clockTime(data.asOf)}`
+                ? `Across all stocks, as of ${clockTime(data.asOf)}`
                 : 'Loading…'}
           </p>
         </div>
@@ -469,7 +469,7 @@ function QuoteList({ title, quotes, metric = changeMetric }) {
       <p className="card__subtitle" style={{ marginBottom: 8 }}>
         {title}
       </p>
-      {/* A sector with instruments always has a best and a worst, so this is
+      {/* A sector with stocks always has a best and a worst, so this is
           unreachable through the API — but a bare heading with nothing under it is a
           worse way to find that out than a sentence. */}
       {quotes.length === 0 && <p className="ticket__muted">Nothing to show.</p>}
@@ -511,7 +511,7 @@ function SectorStrip({ performance, activeSector, onSelect }) {
           <div style={{ marginTop: 6 }}>
             <Delta value={row.averageChangePercent}>{signedPercent(row.averageChangePercent)}</Delta>
           </div>
-          <div className="tile__foot">{row.instruments} instruments</div>
+          <div className="tile__foot">{row.stocks} stocks</div>
         </button>
       ))}
     </div>

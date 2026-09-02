@@ -19,7 +19,7 @@
 CREATE TABLE trades (
   id           bigserial PRIMARY KEY,
   account_id   text        NOT NULL REFERENCES accounts (id) ON DELETE CASCADE,
-  symbol       text        NOT NULL REFERENCES instruments (symbol),
+  symbol       text        NOT NULL REFERENCES stocks (symbol),
   side         text        NOT NULL CHECK (side IN ('BUY', 'SELL')),
   quantity     bigint      NOT NULL CHECK (quantity > 0),
   price        numeric(18,4) NOT NULL CHECK (price > 0),

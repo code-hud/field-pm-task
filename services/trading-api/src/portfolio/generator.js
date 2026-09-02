@@ -8,7 +8,7 @@
  *   2. Consistency — cost basis comes off a real historical close on the purchase
  *      date, so P/L and the equity curve agree with the price history by construction.
  */
-const { INSTRUMENTS, INSTRUMENTS_BY_SYMBOL } = require('../data/instruments.js');
+const { STOCKS, STOCKS_BY_SYMBOL } = require('../data/stocks.js');
 const { createRng, hashString, randomBetween, randomInt, sample } = require('../lib/random.js');
 
 const round2 = (value) => Math.round(value * 100) / 100;
@@ -17,7 +17,7 @@ const portfolioRng = (username) => createRng(hashString(`portfolio:${username.to
 
 /** The first two draws of the portfolio stream: how many names, and which. */
 const drawHoldings = (rng) =>
-  sample(rng, INSTRUMENTS, randomInt(rng, 5, 9)).sort((a, b) => a.symbol.localeCompare(b.symbol));
+  sample(rng, STOCKS, randomInt(rng, 5, 9)).sort((a, b) => a.symbol.localeCompare(b.symbol));
 
 /**
  * Which symbols a username will hold, without needing any price history.
@@ -28,7 +28,7 @@ const drawHoldings = (rng) =>
  * seeding tests pin the pair together.
  */
 const selectPortfolioSymbols = (username) =>
-  drawHoldings(portfolioRng(username)).map((instrument) => instrument.symbol);
+  drawHoldings(portfolioRng(username)).map((stock) => stock.symbol);
 
 /** Cost basis comes off a real close, so unrealized P/L is plausible not invented. */
 function buildLots(rng, dailyBars) {
@@ -59,10 +59,10 @@ function buildDividends(positions, rng, today) {
   const entries = [];
 
   for (const position of positions) {
-    const instrument = INSTRUMENTS_BY_SYMBOL.get(position.symbol);
-    if (!instrument?.dividendYield) continue;
+    const stock = STOCKS_BY_SYMBOL.get(position.symbol);
+    if (!stock?.dividendYield) continue;
 
-    const perShareYear = instrument.basePrice * instrument.dividendYield;
+    const perShareYear = stock.basePrice * stock.dividendYield;
     const payDate = new Date(`${position.openedAt}T00:00:00Z`);
     payDate.setUTCMonth(payDate.getUTCMonth() + 3);
 
@@ -90,14 +90,14 @@ function generatePortfolio(username, dailyBarsBySymbol, today = new Date()) {
   const picked = drawHoldings(rng);
 
   const positions = [];
-  for (const instrument of picked) {
-    const bars = dailyBarsBySymbol.get(instrument.symbol) ?? [];
+  for (const stock of picked) {
+    const bars = dailyBarsBySymbol.get(stock.symbol) ?? [];
     if (bars.length === 0) continue;
     const lots = buildLots(rng, bars);
     if (lots.length === 0) continue;
 
     positions.push({
-      symbol: instrument.symbol,
+      symbol: stock.symbol,
       quantity: lots.reduce((total, lot) => total + lot.quantity, 0),
       openedAt: lots[0].date,
       lots,

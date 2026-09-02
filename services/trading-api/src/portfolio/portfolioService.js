@@ -32,7 +32,7 @@ async function getPortfolio(user) {
             SUM((l.quantity - l.closed_quantity) * l.price)         AS cost_basis,
             q.price, q.previous_close
      FROM positions p
-     JOIN instruments i ON i.symbol = p.symbol
+     JOIN stocks i ON i.symbol = p.symbol
      JOIN quotes q      ON q.symbol = p.symbol
      JOIN lots l        ON l.position_id = p.id
      WHERE p.account_id = $1
@@ -142,7 +142,7 @@ async function getAllocation(user) {
             SUM((l.quantity - l.closed_quantity) * q.price) AS market_value,
             array_agg(DISTINCT p.symbol) AS symbols
      FROM positions p
-     JOIN instruments i ON i.symbol = p.symbol
+     JOIN stocks i ON i.symbol = p.symbol
      JOIN quotes q      ON q.symbol = p.symbol
      JOIN lots l        ON l.position_id = p.id
      WHERE p.account_id = $1
@@ -155,7 +155,7 @@ async function getAllocation(user) {
   const { rows: holdingRows } = await query(
     `SELECT p.symbol, i.name, i.sector, SUM((l.quantity - l.closed_quantity) * q.price) AS market_value
      FROM positions p
-     JOIN instruments i ON i.symbol = p.symbol
+     JOIN stocks i ON i.symbol = p.symbol
      JOIN quotes q      ON q.symbol = p.symbol
      JOIN lots l        ON l.position_id = p.id
      WHERE p.account_id = $1

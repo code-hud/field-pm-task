@@ -6,7 +6,7 @@
 -- deploy runs migrations before the seeder repopulates. Rows written by the old
 -- seeder stay valid until the next seed fills these in.
 
-ALTER TABLE instruments
+ALTER TABLE stocks
   -- GICS sub-industry. Reference data, like sector — the only other field on this
   -- table that describes a real company rather than an invented number.
   ADD COLUMN industry        text,
@@ -22,4 +22,4 @@ ALTER TABLE instruments
 -- The markets table is paged and searched now that it is 500 rows rather than 25.
 -- Search is `symbol ILIKE $1 OR name ILIKE $1`, which no btree can serve, but the
 -- sector filter and the name sort are both worth an index at this size.
-CREATE INDEX IF NOT EXISTS instruments_name_idx ON instruments (name);
+CREATE INDEX IF NOT EXISTS stocks_name_idx ON stocks (name);

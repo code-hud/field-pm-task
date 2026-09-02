@@ -28,24 +28,24 @@ export const me = (token) => request({ label: 'GET /api/auth/me', path: '/api/au
 export const marketStatus = () =>
   request({ label: 'GET /api/market/status', path: '/api/market/status' });
 
-export const instruments = (token, params = {}) =>
+export const stocks = (token, params = {}) =>
   request({
-    label: 'GET /api/market/instruments',
-    path: `/api/market/instruments${qs(params)}`,
+    label: 'GET /api/market/stocks',
+    path: `/api/market/stocks${qs(params)}`,
     token,
   });
 
-export const instrument = (token, symbol) =>
+export const stock = (token, symbol) =>
   request({
-    label: 'GET /api/market/instruments/:symbol',
-    path: `/api/market/instruments/${encodeURIComponent(symbol)}`,
+    label: 'GET /api/market/stocks/:symbol',
+    path: `/api/market/stocks/${encodeURIComponent(symbol)}`,
     token,
   });
 
-export const instrumentHistory = (token, symbol, range) =>
+export const stockHistory = (token, symbol, range) =>
   request({
-    label: 'GET /api/market/instruments/:symbol/history',
-    path: `/api/market/instruments/${encodeURIComponent(symbol)}/history${qs({ range })}`,
+    label: 'GET /api/market/stocks/:symbol/history',
+    path: `/api/market/stocks/${encodeURIComponent(symbol)}/history${qs({ range })}`,
     token,
   });
 

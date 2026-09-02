@@ -57,7 +57,7 @@ const config = {
     floor: num(process.env.FRAUD_SPIKE_FLOOR, 50000),
   },
 
-  // rapid-reversal — buying and selling the same instrument within seconds.
+  // rapid-reversal — buying and selling the same stock within seconds.
   rapidReversal: {
     windowMs: durationMs(process.env.FRAUD_REVERSAL_WINDOW, seconds(45)),
   },

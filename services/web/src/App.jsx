@@ -3,7 +3,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { AppShell } from './components/AppShell.jsx';
 import { LoadingState } from './components/States.jsx';
 import { useAuth } from './context/AuthContext.jsx';
-import { InstrumentPage } from './pages/InstrumentPage.jsx';
+import { StockPage } from './pages/StockPage.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
 import { MarketsPage } from './pages/MarketsPage.jsx';
 import { OrdersPage } from './pages/OrdersPage.jsx';
@@ -34,7 +34,7 @@ export function App() {
         <Route path="/portfolio" element={<PortfolioPage />} />
         <Route path="/orders" element={<OrdersPage />} />
         <Route path="/markets" element={<MarketsPage />} />
-        <Route path="/markets/:symbol" element={<InstrumentPage />} />
+        <Route path="/markets/:symbol" element={<StockPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/portfolio" replace />} />
     </Routes>

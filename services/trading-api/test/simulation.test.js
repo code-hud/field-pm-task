@@ -11,7 +11,7 @@
 const assert = require('node:assert/strict');
 const { describe, it } = require('node:test');
 
-const { INSTRUMENTS, INSTRUMENTS_BY_SYMBOL, SECTORS } = require('../src/data/instruments.js');
+const { STOCKS, STOCKS_BY_SYMBOL, SECTORS } = require('../src/data/stocks.js');
 const { createRng, hashString } = require('../src/lib/random.js');
 const {
   buildDailyBars,
@@ -31,8 +31,8 @@ const TRADING_DAYS_PER_YEAR = 252;
 const streamFor = (symbol, seed = SEED) => createRng(seed ^ hashString(symbol));
 
 function historyFor(symbol, seed = SEED, factors = buildFactorHistory(seed, SESSIONS, SECTORS)) {
-  const instrument = INSTRUMENTS_BY_SYMBOL.get(symbol);
-  return buildDailyBars(instrument, factorLoadings(instrument), factors, streamFor(symbol, seed));
+  const stock = STOCKS_BY_SYMBOL.get(symbol);
+  return buildDailyBars(stock, factorLoadings(stock), factors, streamFor(symbol, seed));
 }
 
 const mean = (values) => values.reduce((total, v) => total + v, 0) / values.length;
@@ -68,29 +68,29 @@ function slope(y, x) {
 
 describe('the universe', () => {
   it('is the S&P 500 constituent list, with nothing real but the identity', () => {
-    assert.ok(INSTRUMENTS.length > 480 && INSTRUMENTS.length < 520, `got ${INSTRUMENTS.length}`);
-    assert.equal(new Set(INSTRUMENTS.map((i) => i.symbol)).size, INSTRUMENTS.length);
+    assert.ok(STOCKS.length > 480 && STOCKS.length < 520, `got ${STOCKS.length}`);
+    assert.equal(new Set(STOCKS.map((i) => i.symbol)).size, STOCKS.length);
 
     // Names that survive index reshuffles; if the committed CSV is ever swapped
     // for something that is not the S&P 500, this is what notices.
     for (const symbol of ['AAPL', 'MSFT', 'JPM', 'XOM', 'JNJ', 'BRK.B']) {
-      assert.ok(INSTRUMENTS_BY_SYMBOL.has(symbol), `${symbol} should be a constituent`);
+      assert.ok(STOCKS_BY_SYMBOL.has(symbol), `${symbol} should be a constituent`);
     }
 
-    for (const instrument of INSTRUMENTS) {
-      assert.ok(SECTORS.includes(instrument.sector), `${instrument.symbol}: ${instrument.sector}`);
-      assert.ok(instrument.industry, `${instrument.symbol} has a GICS sub-industry`);
+    for (const stock of STOCKS) {
+      assert.ok(SECTORS.includes(stock.sector), `${stock.symbol}: ${stock.sector}`);
+      assert.ok(stock.industry, `${stock.symbol} has a GICS sub-industry`);
       // Nothing here is a real quote, and the exchange says so on every row.
-      assert.equal(instrument.exchange, 'DEMO');
-      assert.ok(instrument.basePrice > 0 && instrument.volatility > 0);
-      assert.ok(instrument.beta > 0 && instrument.avgVolume > 0);
+      assert.equal(stock.exchange, 'DEMO');
+      assert.ok(stock.basePrice > 0 && stock.volatility > 0);
+      assert.ok(stock.beta > 0 && stock.avgVolume > 0);
     }
   });
 
   it('derives fundamentals from the ticker alone, so they never drift', () => {
     // Re-importing would be cached; the guarantee under test is that the values
     // are a pure function of the symbol, which is what makes them reproducible.
-    const apple = INSTRUMENTS_BY_SYMBOL.get('AAPL');
+    const apple = STOCKS_BY_SYMBOL.get('AAPL');
     const loadings = factorLoadings(apple);
     assert.deepEqual(factorLoadings(apple), loadings);
   });
@@ -106,7 +106,7 @@ describe('determinism', () => {
     assert.notDeepEqual(historyFor('AAPL', SEED), historyFor('AAPL', SEED + 1));
   });
 
-  it('leaves every other instrument untouched when the universe changes', () => {
+  it('leaves every other stock untouched when the universe changes', () => {
     // The factor paths are a function of the seed and the session dates only, so
     // a constituent added or dropped cannot shift anyone else's history. Building
     // the factors over a deliberately reduced sector list proves the point: the
@@ -118,7 +118,7 @@ describe('determinism', () => {
     assert.deepEqual(partial.volMultiplier, full.volMultiplier);
     assert.deepEqual(partial.sectors.get('Utilities'), full.sectors.get('Utilities'));
 
-    const utility = INSTRUMENTS.find((i) => i.sector === 'Utilities');
+    const utility = STOCKS.find((i) => i.sector === 'Utilities');
     assert.deepEqual(
       buildDailyBars(utility, factorLoadings(utility), partial, streamFor(utility.symbol)),
       buildDailyBars(utility, factorLoadings(utility), full, streamFor(utility.symbol)),
@@ -131,24 +131,24 @@ describe('bar coherence', () => {
   const intradayFactors = buildIntradayFactors(SEED, '2026-08-03', 390, SECTORS);
 
   it('keeps every daily bar positive and self-consistent', () => {
-    for (const instrument of INSTRUMENTS) {
+    for (const stock of STOCKS) {
       const bars = buildDailyBars(
-        instrument,
-        factorLoadings(instrument),
+        stock,
+        factorLoadings(stock),
         factors,
-        streamFor(instrument.symbol),
+        streamFor(stock.symbol),
       );
       assert.equal(bars.length, SESSIONS.length);
 
       for (const bar of bars) {
-        assert.ok(bar.low > 0, `${instrument.symbol} ${bar.date}: low ${bar.low}`);
+        assert.ok(bar.low > 0, `${stock.symbol} ${bar.date}: low ${bar.low}`);
         assert.ok(
           bar.low <= Math.min(bar.open, bar.close),
-          `${instrument.symbol} ${bar.date}: low above the body`,
+          `${stock.symbol} ${bar.date}: low above the body`,
         );
         assert.ok(
           bar.high >= Math.max(bar.open, bar.close),
-          `${instrument.symbol} ${bar.date}: high below the body`,
+          `${stock.symbol} ${bar.date}: high below the body`,
         );
         assert.ok(bar.volume > 0);
       }
@@ -159,12 +159,12 @@ describe('bar coherence', () => {
     // A sample rather than all 503: this builds 390 bars each and the property is
     // structural, not per-name.
     for (const symbol of ['AAPL', 'NEE', 'XOM', 'JPM', 'BRK.B']) {
-      const instrument = INSTRUMENTS_BY_SYMBOL.get(symbol);
-      const loadings = factorLoadings(instrument);
+      const stock = STOCKS_BY_SYMBOL.get(symbol);
+      const loadings = factorLoadings(stock);
       const { bars, open, price } = buildIntradayBars(
-        instrument,
+        stock,
         loadings,
-        instrument.basePrice,
+        stock.basePrice,
         intradayFactors,
         streamFor(symbol),
       );
@@ -181,33 +181,33 @@ describe('bar coherence', () => {
   });
 
   it('never lets a 1Y series flatline or explode', () => {
-    for (const instrument of INSTRUMENTS) {
+    for (const stock of STOCKS) {
       const bars = buildDailyBars(
-        instrument,
-        factorLoadings(instrument),
+        stock,
+        factorLoadings(stock),
         factors,
-        streamFor(instrument.symbol),
+        streamFor(stock.symbol),
       );
       const window = bars.slice(-252);
       const ratio = window.at(-1).close / window[0].open;
-      assert.ok(ratio > 0.2 && ratio < 5, `${instrument.symbol} moved ${ratio.toFixed(2)}× in a year`);
+      assert.ok(ratio > 0.2 && ratio < 5, `${stock.symbol} moved ${ratio.toFixed(2)}× in a year`);
 
       // "Not a flat line" as a range, not as a count of distinct closes: prices
       // are rounded to the cent, so a $12 name legitimately revisits values.
       const closes = window.map((bar) => bar.close);
       const spread = Math.max(...closes) / Math.min(...closes);
-      assert.ok(spread > 1.1, `${instrument.symbol} spent the year in a ${spread.toFixed(3)}× band`);
+      assert.ok(spread > 1.1, `${stock.symbol} spent the year in a ${spread.toFixed(3)}× band`);
     }
   });
 });
 
 describe('the factor model', () => {
   const factors = buildFactorHistory(SEED, SESSIONS, SECTORS);
-  const series = INSTRUMENTS.map((instrument) => ({
-    instrument,
-    loadings: factorLoadings(instrument),
+  const series = STOCKS.map((stock) => ({
+    stock,
+    loadings: factorLoadings(stock),
     returns: logReturns(
-      buildDailyBars(instrument, factorLoadings(instrument), factors, streamFor(instrument.symbol)),
+      buildDailyBars(stock, factorLoadings(stock), factors, streamFor(stock.symbol)),
     ),
   }));
   const marketReturns = factors.market.slice(1);
@@ -215,8 +215,8 @@ describe('the factor model', () => {
   it('makes names in a sector co-move more than names across sectors', () => {
     const bySector = new Map();
     for (const entry of series) {
-      if (!bySector.has(entry.instrument.sector)) bySector.set(entry.instrument.sector, []);
-      bySector.get(entry.instrument.sector).push(entry);
+      if (!bySector.has(entry.stock.sector)) bySector.set(entry.stock.sector, []);
+      bySector.get(entry.stock.sector).push(entry);
     }
 
     // Deterministic sampling: the same pairs every run, so a failure reproduces.
@@ -227,7 +227,7 @@ describe('the factor model', () => {
       const a = series[Math.floor(rng() * series.length)];
       const b = series[Math.floor(rng() * series.length)];
       if (a === b) continue;
-      const bucket = a.instrument.sector === b.instrument.sector ? same : cross;
+      const bucket = a.stock.sector === b.stock.sector ? same : cross;
       if (bucket.length < 300) bucket.push(correlation(a.returns, b.returns));
     }
 
@@ -259,12 +259,12 @@ describe('the factor model', () => {
     );
   });
 
-  it('delivers the volatility each instrument advertises', () => {
+  it('delivers the volatility each stock advertises', () => {
     const ratios = series.map((entry) => {
       const m = mean(entry.returns);
       const variance =
         entry.returns.reduce((total, r) => total + (r - m) ** 2, 0) / (entry.returns.length - 1);
-      return (Math.sqrt(variance * TRADING_DAYS_PER_YEAR) / entry.instrument.volatility);
+      return (Math.sqrt(variance * TRADING_DAYS_PER_YEAR) / entry.stock.volatility);
     });
     const sorted = [...ratios].sort((a, b) => a - b);
     // Measured p5/p50/p95 ≈ 0.94 / 1.00 / 1.11. The path-normalized volatility

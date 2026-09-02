@@ -317,7 +317,7 @@ async function existingOrderFor(accountId, clientOrderId) {
  *
  * <b>It records refusals of real orders only.</b> A 400 means the request was not a
  * well-formed order at all — no side, a quantity of "x" — and an unknown symbol has
- * no row in `instruments` for the foreign key to reach. Recording either would mean
+ * no row in `stocks` for the foreign key to reach. Recording either would mean
  * relaxing the constraints that make this table worth having. A malformed request is
  * a client bug and belongs in the access log, not in an account's order history.
  *

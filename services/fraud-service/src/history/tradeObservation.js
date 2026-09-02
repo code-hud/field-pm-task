@@ -14,7 +14,7 @@ function tradeObservation({ at, symbol, side, notional }) {
     symbol,
     side,
     notional,
-    /** True when this trade is the other direction on the same instrument. */
+    /** True when this trade is the other direction on the same stock. */
     isReversalOf(trade) {
       return this.symbol === trade.symbol && this.side !== trade.side;
     },

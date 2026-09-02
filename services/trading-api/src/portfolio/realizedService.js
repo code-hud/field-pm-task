@@ -112,7 +112,7 @@ async function getRealizedBreakdown(user) {
             MIN(c.closed_on)                                 AS first_closed_on,
             MAX(c.closed_on)                                 AS last_closed_on
      FROM lot_closures c
-     JOIN instruments i ON i.symbol = c.symbol
+     JOIN stocks i ON i.symbol = c.symbol
      WHERE c.account_id = $1
      GROUP BY c.symbol, i.name, i.sector
      -- Biggest contribution first, then alphabetically, so two symbols that made the

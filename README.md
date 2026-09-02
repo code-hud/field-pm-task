@@ -1,9 +1,9 @@
 # Field PM Task — Trading Platform
 
 A small but realistic trading platform, instrumented with **OpenTelemetry** and reporting
-to **New Relic**. You'll run it locally, watch its traffic, and reason about what the data
-does and doesn't tell you. Full instructions are in the assignment you were sent — this
-file is just how to get it running.
+to a local **Jaeger** that starts with the stack. You'll run it locally, watch its traffic,
+and reason about what the data does and doesn't tell you. Full instructions are in the
+assignment you were sent — this file is just how to get it running.
 
 ## Architecture
 
@@ -15,7 +15,7 @@ file is just how to get it running.
                                 ▼
                             Postgres
 
-  trading-api and fraud-service export traces + metrics (OTLP) ──▶ New Relic
+  trading-api and fraud-service export traces (OTLP) ──▶ Jaeger (local, :16686)
 ```
 
 - **trading-api** — auth, portfolios, orders, and a simulated market. Owns the Postgres database.
@@ -25,24 +25,18 @@ file is just how to get it running.
 
 ## Setup
 
-You need **Docker** and a free **New Relic** account.
+You need **Docker** — that's it. No account, no API key.
 
-1. Sign up at https://newrelic.com (free tier; Gmail works) → **Account → API keys**
-   → copy your **INGEST - LICENSE** key.
-2. Configure the stack:
-   ```bash
-   cp .env.example .env
-   # edit .env: paste your key into OTEL_EXPORTER_OTLP_HEADERS (api-key=...)
-   ```
-3. Start it:
-   ```bash
-   make up            # full stack + UI at http://localhost:8080
-   # or: docker compose up --build
-   ```
-   The database migrates and seeds itself on first boot (~30–60s).
+```bash
+make up            # full stack + UI at http://localhost:8080
+# or: docker compose up --build
+```
 
-Within a minute or two, in New Relic under **APM & Services** (and **Distributed tracing**)
-you should see `trading-api` and `fraud-service`, with traces for the order flow.
+The database migrates and seeds itself on first boot (~30–60s).
+
+Then open **Jaeger at http://localhost:16686**: pick the `trading-api` service and
+**Find Traces**. Click a trace to see the waterfall — the HTTP request, its call to
+`fraud-service`, and the `pg` query spans underneath.
 
 Running low on resources or hitting setup trouble? **Contact us** — don't lose time on it.
 
@@ -62,6 +56,7 @@ make down            # stop
 | Service | URL |
 |---|---|
 | Web UI | http://localhost:8080 |
+| Jaeger (traces) | http://localhost:16686 |
 | trading-api | http://localhost:4000 (`/health`) |
 | fraud-service | http://localhost:4100 (`/health`, `/fraud/stats`) |
 | Postgres | localhost:5432 (`headsup` / `headsup`) |
@@ -71,5 +66,7 @@ make down            # stop
 - Sign in to the UI with any username; the portfolio is generated from it.
 - **Real tickers, invented prices.** Everything about the market is simulated.
 - Each service is instrumented with OpenTelemetry auto-instrumentation (HTTP, Express,
-  `pg`). The wiring is in `docker-compose.yml` (the `OTEL_*` variables) — no code to read
-  to see how telemetry is turned on.
+  `pg`). The wiring is in `docker-compose.yml` (the `OTEL_*` variables) and `otel.js` in
+  each service — nothing in the app code turns telemetry on.
+- Traces go to the bundled Jaeger. To use a hosted OTLP backend instead, set
+  `OTEL_EXPORTER_OTLP_ENDPOINT` (and headers) in `.env`.

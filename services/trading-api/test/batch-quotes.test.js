@@ -39,8 +39,8 @@ const signIn = async (username) => {
 
 /** A few real symbols, taken from the universe rather than assumed. */
 const someSymbols = async (token, count) => {
-  const { body } = await authed(token, `/api/market/instruments?limit=${count}&sparkline=0`);
-  return body.instruments.map((instrument) => instrument.symbol);
+  const { body } = await authed(token, `/api/market/stocks?limit=${count}&sparkline=0`);
+  return body.stocks.map((stock) => stock.symbol);
 };
 
 before(async () => {
@@ -102,7 +102,7 @@ describe('batch quotes', () => {
     );
 
     for (const [index, symbol] of symbols.entries()) {
-      const { body: single } = await authed(token, `/api/market/instruments/${symbol}`);
+      const { body: single } = await authed(token, `/api/market/stocks/${symbol}`);
       const { sparkline, ...quote } = single;
       assert.deepEqual(batch.quotes[index], quote, `${symbol} matches its own endpoint`);
     }

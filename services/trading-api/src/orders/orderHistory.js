@@ -53,7 +53,7 @@ async function listOrders(user, { status, symbol, limit = 50, offset = 0 } = {})
   const { rows } = await query(
     `SELECT o.*, i.name, count(*) OVER () AS total
      FROM orders o
-     JOIN instruments i ON i.symbol = o.symbol
+     JOIN stocks i ON i.symbol = o.symbol
      WHERE o.account_id = $1
        AND ($2::text IS NULL OR o.status = $2)
        AND ($3::text IS NULL OR o.symbol = $3)
@@ -84,7 +84,7 @@ async function listOrders(user, { status, symbol, limit = 50, offset = 0 } = {})
 async function getOrder(user, id) {
   const { rows } = await query(
     `SELECT o.*, i.name FROM orders o
-     JOIN instruments i ON i.symbol = o.symbol
+     JOIN stocks i ON i.symbol = o.symbol
      WHERE o.id = $1 AND o.account_id = $2`,
     [id, user.id],
   );

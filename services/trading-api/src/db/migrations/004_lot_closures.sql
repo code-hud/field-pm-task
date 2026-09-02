@@ -26,7 +26,7 @@ CREATE TABLE lot_closures (
   -- three tables to reach a symbol. Both are immutable on the parent rows, so
   -- there is nothing here that can go stale.
   account_id   text        NOT NULL REFERENCES accounts (id) ON DELETE CASCADE,
-  symbol       text        NOT NULL REFERENCES instruments (symbol),
+  symbol       text        NOT NULL REFERENCES stocks (symbol),
   quantity     bigint      NOT NULL CHECK (quantity > 0),
   -- What the shares cost when bought, and what they fetched. Both at the lot's
   -- precision, so `quantity * (sale_price - cost_price)` reproduces the gain

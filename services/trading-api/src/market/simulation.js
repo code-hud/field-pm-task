@@ -16,7 +16,7 @@
  *            + sectorBeta(i)  · s(sector,t)   what is left that only the sector shares
  *            + idioVol(i)·√dt·ε               the name's own noise
  *
- * `beta` from the instrument table is what drives `marketBeta`, so it stopped
+ * `beta` from the stock table is what drives `marketBeta`, so it stopped
  * being decorative: a 1.5-beta semiconductor name really does swing half again as
  * hard as the market, and a 0.4-beta utility really does barely notice.
  *
@@ -36,13 +36,13 @@
  *
  * ## Determinism
  *
- * Same MARKET_SEED, same market — and adding or removing an instrument still
+ * Same MARKET_SEED, same market — and adding or removing an stock still
  * perturbs nothing else. The factor paths are seeded from the market seed and the
- * session dates alone; they never touch the instrument list. Each name's
+ * session dates alone; they never touch the stock list. Each name's
  * idiosyncratic stream is seeded from its own ticker, exactly as before. So a
  * constituent change reprices that one name and leaves the other 502 byte-identical.
  *
- * Total variance is held at the instrument's declared `volatility`: whatever the
+ * Total variance is held at the stock's declared `volatility`: whatever the
  * factors claim, the idiosyncratic part is sized to make the sum come out right
  * (see `factorLoadings`).
  */
@@ -105,30 +105,30 @@ const intradayVolShape = (progress) =>
 const intradayVolumeShape = (progress) => 0.6 + 1.8 * (2 * progress - 1) ** 2;
 
 /**
- * How a single instrument loads on the factors. Pure and deterministic from the
- * instrument alone, so the seeder and the tick loop cannot disagree about it.
+ * How a single stock loads on the factors. Pure and deterministic from the
+ * stock alone, so the seeder and the tick loop cannot disagree about it.
  *
  * The scale guard exists because `beta` and `volatility` are drawn independently:
  * a name declaring 16% vol and a beta of 1.2 would need more systematic variance
  * than it has variance. Rather than let realized volatility overshoot the number
  * the UI prints, the systematic loadings are shrunk until they fit the budget. It
  * fires on roughly a sixth of the universe — the low-volatility tail — and the
- * seeder stores the shrunk `marketBeta` back as the instrument's `beta`, so the
+ * seeder stores the shrunk `marketBeta` back as the stock's `beta`, so the
  * beta shown on screen is always the beta the returns actually exhibit.
  */
-function factorLoadings(instrument) {
-  const rng = createRng(hashString(`loadings:${instrument.symbol}`));
+function factorLoadings(stock) {
+  const rng = createRng(hashString(`loadings:${stock.symbol}`));
   const sectorLoading = randomBetween(rng, 0.7, 1.3);
   const alpha = gaussian(rng) * ALPHA_SPREAD;
 
-  const targetVar = instrument.volatility ** 2;
+  const targetVar = stock.volatility ** 2;
   const systematicVar =
-    instrument.beta ** 2 * MARKET_FACTOR_VOL ** 2 + sectorLoading ** 2 * SECTOR_FACTOR_VOL ** 2;
+    stock.beta ** 2 * MARKET_FACTOR_VOL ** 2 + sectorLoading ** 2 * SECTOR_FACTOR_VOL ** 2;
   const budget = targetVar * (1 - IDIO_VARIANCE_FLOOR);
   const scale = systematicVar > budget ? Math.sqrt(budget / systematicVar) : 1;
 
   return {
-    marketBeta: instrument.beta * scale,
+    marketBeta: stock.beta * scale,
     sectorBeta: sectorLoading * scale,
     sectorLoading,
     idioVolatility: Math.sqrt(targetVar - systematicVar * scale ** 2),
@@ -143,7 +143,7 @@ function factorLoadings(instrument) {
  * **Normalized to a root-mean-square of exactly 1 over the path it returns.**
  * That matters more than it sounds. Centring analytically on E[m²] = 1 is correct
  * in expectation, but the mean of a lognormal lives in its right tail, so any
- * *individual* 271-session path came out 15–25% quiet and every instrument's
+ * *individual* 271-session path came out 15–25% quiet and every stock's
  * realized volatility landed below the number the UI prints next to it.
  * Normalizing the path keeps the clustering — the calm and turbulent stretches are
  * exactly as pronounced — while making "annualized volatility" a promise the data
@@ -272,7 +272,7 @@ class FactorEngine {
  *
  * @returns {{ logReturn: number, residual: number }}
  */
-function instrumentStep({
+function stockStep({
   loadings,
   factorStep,
   sectorReturn,
@@ -326,8 +326,8 @@ function tradingSessionDates(endDate, calendarDays) {
  * The whole history of common factors, precomputed once for the seeder.
  *
  * Materializing it costs 11 sectors × ~270 sessions of numbers and lets all 503
- * instruments be generated against the identical path — which is the entire point
- * of a factor model, and also why the seeder can still generate one instrument at
+ * stocks be generated against the identical path — which is the entire point
+ * of a factor model, and also why the seeder can still generate one stock at
  * a time without holding the universe in memory.
  */
 function buildFactorHistory(marketSeed, sessions, sectors) {
@@ -346,22 +346,22 @@ function buildFactorHistory(marketSeed, sessions, sectors) {
 }
 
 /**
- * Daily OHLC bars for one instrument over the sessions the factor history covers.
+ * Daily OHLC bars for one stock over the sessions the factor history covers.
  *
- * @param {object} instrument
+ * @param {object} stock
  * @param {object} loadings   from `factorLoadings`
  * @param {object} factors    from `buildFactorHistory`
- * @param {Function} rng      the instrument's own stream
+ * @param {Function} rng      the stock's own stream
  */
-function buildDailyBars(instrument, loadings, factors, rng) {
+function buildDailyBars(stock, loadings, factors, rng) {
   const bars = new Array(factors.sessions.length);
-  const sectorPath = factors.sectors.get(instrument.sector);
-  let close = instrument.basePrice;
+  const sectorPath = factors.sectors.get(stock.sector);
+  let close = stock.basePrice;
   let residual = 0;
 
   for (let i = 0; i < factors.sessions.length; i += 1) {
     const open = close;
-    const stepResult = instrumentStep({
+    const stepResult = stockStep({
       loadings,
       factorStep: { market: factors.market[i], volMultiplier: factors.volMultiplier[i] },
       sectorReturn: sectorPath[i],
@@ -375,7 +375,7 @@ function buildDailyBars(instrument, loadings, factors, rng) {
     // Wicks scale with the day's realized move, so a quiet day gets a small
     // range and a gap day gets a wide one.
     const move = Math.abs(close - open);
-    const wick = (move + open * instrument.volatility * 0.004) * Math.abs(gaussian(rng)) * 0.6;
+    const wick = (move + open * stock.volatility * 0.004) * Math.abs(gaussian(rng)) * 0.6;
     // Turnover follows conviction: heavy days trade more.
     const activity = 1 + 6 * Math.abs(stepResult.logReturn);
 
@@ -385,7 +385,7 @@ function buildDailyBars(instrument, loadings, factors, rng) {
       high: round2(Math.max(open, close) + wick),
       low: round2(Math.max(Math.min(open, close) - wick, PRICE_FLOOR)),
       close: round2(close),
-      volume: Math.round(instrument.avgVolume * activity * randomBetween(rng, 0.55, 1.65)),
+      volume: Math.round(stock.avgVolume * activity * randomBetween(rng, 0.55, 1.65)),
     };
   }
 
@@ -429,9 +429,9 @@ function buildIntradayFactors(marketSeed, sessionDate, minutes, sectors) {
 }
 
 /** The current session's 1-minute bars, from the open through `factors.minutes`. */
-function buildIntradayBars(instrument, loadings, previousClose, factors, rng) {
-  const sectorPath = factors.sectors.get(instrument.sector);
-  const sectorGap = factors.sectorGaps.get(instrument.sector) ?? 0;
+function buildIntradayBars(stock, loadings, previousClose, factors, rng) {
+  const sectorPath = factors.sectors.get(stock.sector);
+  const sectorGap = factors.sectorGaps.get(stock.sector) ?? 0;
 
   // The gap is the factor model applied to a single instantaneous move: the name
   // follows the market and its sector, plus its own overnight surprise.
@@ -448,7 +448,7 @@ function buildIntradayBars(instrument, loadings, previousClose, factors, rng) {
   for (let minute = 0; minute < factors.minutes; minute += 1) {
     const barOpen = price;
     const progress = minute / MINUTES_PER_SESSION;
-    const stepResult = instrumentStep({
+    const stepResult = stockStep({
       loadings,
       factorStep: { market: factors.market[minute], volMultiplier: factors.volMultiplier[minute] },
       sectorReturn: sectorPath[minute],
@@ -468,7 +468,7 @@ function buildIntradayBars(instrument, loadings, previousClose, factors, rng) {
       low: round2(Math.max(Math.min(barOpen, price) - wick, PRICE_FLOOR)),
       close: round2(price),
       volume: Math.round(
-        (instrument.avgVolume / MINUTES_PER_SESSION) *
+        (stock.avgVolume / MINUTES_PER_SESSION) *
           intradayVolumeShape(progress) *
           randomBetween(rng, 0.6, 1.4),
       ),
@@ -489,7 +489,7 @@ module.exports = {
   factorLoadings,
   volatilityPath,
   FactorEngine,
-  instrumentStep,
+  stockStep,
   tradingSessionDates,
   buildFactorHistory,
   buildDailyBars,

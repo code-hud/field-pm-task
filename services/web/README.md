@@ -30,7 +30,7 @@ The API location is **not** baked into the bundle, so one image serves every env
 
 | Path | |
 |---|---|
-| `src/pages/` | Login, Portfolio, Markets, Instrument detail |
+| `src/pages/` | Login, Portfolio, Markets, Stock detail |
 | `src/components/` | app shell, stat tiles, and the hand-built SVG charts |
 | `src/context/` | auth session, light/dark theme |
 | `src/hooks/useLiveQuery.js` | poll-with-refresh — holds the last render instead of flashing a skeleton |

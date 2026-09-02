@@ -13,6 +13,7 @@ RUN apk add --no-cache dumb-init
 COPY package.json ./
 RUN npm install --no-audit --no-fund
 
+COPY otel.js ./
 COPY src ./src
 
 EXPOSE 4000

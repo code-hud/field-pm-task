@@ -164,7 +164,7 @@ function synthesizeFundamentals({ symbol, sector }) {
 
 const CONSTITUENTS = parseCsv(readFileSync(CSV_PATH, 'utf8'));
 
-const INSTRUMENTS = CONSTITUENTS.map((row) => {
+const STOCKS = CONSTITUENTS.map((row) => {
   const identity = {
     symbol: row.Symbol,
     name: row.Security,
@@ -181,9 +181,9 @@ const INSTRUMENTS = CONSTITUENTS.map((row) => {
   };
 }).sort((a, b) => a.symbol.localeCompare(b.symbol));
 
-const INSTRUMENTS_BY_SYMBOL = new Map(INSTRUMENTS.map((i) => [i.symbol, i]));
+const STOCKS_BY_SYMBOL = new Map(STOCKS.map((i) => [i.symbol, i]));
 
-const findInstrument = (symbol) =>
-  INSTRUMENTS_BY_SYMBOL.get(String(symbol ?? '').toUpperCase()) ?? null;
+const findStock = (symbol) =>
+  STOCKS_BY_SYMBOL.get(String(symbol ?? '').toUpperCase()) ?? null;
 
-module.exports = { SECTORS, INSTRUMENTS, INSTRUMENTS_BY_SYMBOL, findInstrument };
+module.exports = { SECTORS, STOCKS, STOCKS_BY_SYMBOL, findStock };

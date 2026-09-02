@@ -82,10 +82,10 @@ export const api = {
   me: (signal) => request('/auth/me', { signal }),
 
   marketStatus: (signal) => request('/market/status', { signal, auth: false }),
-  instruments: (params = {}, signal) => request(`/market/instruments${query(params)}`, { signal }),
-  instrument: (symbol, signal) => request(`/market/instruments/${encodeURIComponent(symbol)}`, { signal }),
-  instrumentHistory: (symbol, range, signal) =>
-    request(`/market/instruments/${encodeURIComponent(symbol)}/history${query({ range })}`, { signal }),
+  stocks: (params = {}, signal) => request(`/market/stocks${query(params)}`, { signal }),
+  stock: (symbol, signal) => request(`/market/stocks/${encodeURIComponent(symbol)}`, { signal }),
+  stockHistory: (symbol, range, signal) =>
+    request(`/market/stocks/${encodeURIComponent(symbol)}/history${query({ range })}`, { signal }),
   movers: (count, signal) => request(`/market/movers${query({ count })}`, { signal }),
   sectors: (signal) => request('/market/sectors', { signal }),
   /** One sector in detail: both weightings, breadth, and the names at each end. */

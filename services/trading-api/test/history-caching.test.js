@@ -1,5 +1,5 @@
 /**
- * Conditional requests on `GET /api/market/instruments/:symbol/history`.
+ * Conditional requests on `GET /api/market/stocks/:symbol/history`.
  *
  * The property under test is not "a 304 comes back" but *when* one is allowed to.
  * A validator that is too coarse serves a chart the tape has already moved past,
@@ -40,7 +40,7 @@ const call = async (path, options = {}) => {
 };
 
 const history = (symbol, range, headers = {}) =>
-  call(`/api/market/instruments/${symbol}/history?range=${range}`, {
+  call(`/api/market/stocks/${symbol}/history?range=${range}`, {
     headers: { authorization: `Bearer ${token}`, ...headers },
   });
 

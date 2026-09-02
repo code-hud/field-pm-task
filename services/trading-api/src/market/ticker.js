@@ -9,11 +9,11 @@
  * next attempt — no heartbeat table, no lease expiry to tune.
  */
 const { config } = require('../config/index.js');
-const { SECTORS } = require('../data/instruments.js');
+const { SECTORS } = require('../data/stocks.js');
 const { pool } = require('../db/pool.js');
 const { setFailure, wrapFlow } = require('../observability/telemetry.js');
 const { sessionState } = require('./clock.js');
-const { FactorEngine, instrumentStep, MINUTES_PER_SESSION, round2 } = require('./simulation.js');
+const { FactorEngine, stockStep, MINUTES_PER_SESSION, round2 } = require('./simulation.js');
 const { randomBetween, createRng, hashString } = require('../lib/random.js');
 const { sweepRestingOrders } = require('../orders/restingBook.js');
 
@@ -278,7 +278,7 @@ class MarketTicker {
       `SELECT q.symbol, q.price, q.day_high, q.day_low, q.volume,
               i.sector, i.avg_volume, i.beta, i.sector_loading, i.idio_volatility, i.drift_annual,
               i.volatility
-       FROM quotes q JOIN instruments i USING (symbol)`,
+       FROM quotes q JOIN stocks i USING (symbol)`,
     );
     if (current.length === 0) return;
 
@@ -290,7 +290,7 @@ class MarketTicker {
 
     const updates = current.map((row) => {
       const rng = this.#streamFor(row.symbol);
-      const stepResult = instrumentStep({
+      const stepResult = stockStep({
         loadings: loadingsFor(row),
         factorStep,
         sectorReturn: factorStep.sectors.get(row.sector) ?? 0,

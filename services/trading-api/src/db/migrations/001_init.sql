@@ -1,7 +1,7 @@
 -- Heads Up Financial — initial schema.
 --
 -- Two halves that meet only at `symbol`:
---   reference + market data (instruments, daily_bars, intraday_bars, quotes)
+--   reference + market data (stocks, daily_bars, intraday_bars, quotes)
 --   customer data          (accounts, positions, lots, dividends)
 --
 -- Prices and money are `numeric` — exact decimal, no float rounding in a ledger.
@@ -9,7 +9,7 @@
 
 -- ---------------------------------------------------------------- market data
 
-CREATE TABLE instruments (
+CREATE TABLE stocks (
   symbol              text PRIMARY KEY,
   name                text        NOT NULL,
   sector              text        NOT NULL,
@@ -28,11 +28,11 @@ CREATE TABLE instruments (
   fifty_two_week_low  numeric(18,4)
 );
 
-CREATE INDEX instruments_sector_idx ON instruments (sector);
+CREATE INDEX stocks_sector_idx ON stocks (sector);
 
 -- One row per symbol per trading session. The equity curve joins against this.
 CREATE TABLE daily_bars (
-  symbol       text        NOT NULL REFERENCES instruments (symbol) ON DELETE CASCADE,
+  symbol       text        NOT NULL REFERENCES stocks (symbol) ON DELETE CASCADE,
   session_date date        NOT NULL,
   open         numeric(18,4) NOT NULL,
   high         numeric(18,4) NOT NULL,
@@ -48,7 +48,7 @@ CREATE INDEX daily_bars_session_date_idx ON daily_bars (session_date);
 -- Current session only, one row per minute. `minute` is minutes since the 09:30 ET
 -- open, so 0..389 for a regular session.
 CREATE TABLE intraday_bars (
-  symbol       text     NOT NULL REFERENCES instruments (symbol) ON DELETE CASCADE,
+  symbol       text     NOT NULL REFERENCES stocks (symbol) ON DELETE CASCADE,
   session_date date     NOT NULL,
   minute       smallint NOT NULL CHECK (minute >= 0),
   open         numeric(18,4) NOT NULL,
@@ -59,9 +59,9 @@ CREATE TABLE intraday_bars (
   PRIMARY KEY (symbol, session_date, minute)
 );
 
--- The live tape: exactly one row per instrument, rewritten by the tick loop.
+-- The live tape: exactly one row per stock, rewritten by the tick loop.
 CREATE TABLE quotes (
-  symbol         text PRIMARY KEY REFERENCES instruments (symbol) ON DELETE CASCADE,
+  symbol         text PRIMARY KEY REFERENCES stocks (symbol) ON DELETE CASCADE,
   price          numeric(18,4) NOT NULL CHECK (price > 0),
   open           numeric(18,4) NOT NULL,
   previous_close numeric(18,4) NOT NULL CHECK (previous_close > 0),
@@ -96,7 +96,7 @@ CREATE TABLE accounts (
 CREATE TABLE positions (
   id         bigserial PRIMARY KEY,
   account_id text NOT NULL REFERENCES accounts (id) ON DELETE CASCADE,
-  symbol     text NOT NULL REFERENCES instruments (symbol),
+  symbol     text NOT NULL REFERENCES stocks (symbol),
   opened_at  date NOT NULL,
   UNIQUE (account_id, symbol)
 );
@@ -120,7 +120,7 @@ CREATE INDEX lots_trade_date_idx ON lots (trade_date);
 CREATE TABLE dividends (
   id         bigserial PRIMARY KEY,
   account_id text NOT NULL REFERENCES accounts (id) ON DELETE CASCADE,
-  symbol     text NOT NULL REFERENCES instruments (symbol),
+  symbol     text NOT NULL REFERENCES stocks (symbol),
   pay_date   date NOT NULL,
   amount     numeric(18,2) NOT NULL CHECK (amount > 0)
 );

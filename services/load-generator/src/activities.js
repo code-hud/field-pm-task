@@ -2,7 +2,7 @@
  * What a virtual user does, and how often.
  *
  * Each activity is a short journey rather than a single request, because that is how
- * the API is actually used: nobody fetches an instrument without then fetching its
+ * the API is actually used: nobody fetches an stock without then fetching its
  * chart. Journeys carry their own short pauses so the requests inside one arrive
  * spread out, the way a page's follow-up calls do.
  *
@@ -24,7 +24,7 @@ const SORTS = ['symbol', 'name', 'price', 'changePercent', 'volume', 'marketCapB
 const SEARCHES = ['nova', 'atl', 'cap', 'tech', 'gro', 'meri', 'zz', 'qqq'];
 
 /**
- * The instrument universe, as last seen. Replaced wholesale on every listing rather
+ * The stock universe, as last seen. Replaced wholesale on every listing rather
  * than merged into, so this stays 25 entries for the life of the process instead of
  * accumulating every symbol ever returned.
  */
@@ -45,12 +45,12 @@ export const tradingIsAvailable = () => config.trading.enabled && !tradingUnavai
 
 async function browseMarkets(ctx) {
   const listing = await ctx.step(
-    api.instruments(ctx.token, {
+    api.stocks(ctx.token, {
       sort: pick(ctx.rng, SORTS),
       order: ctx.rng() < 0.5 ? 'asc' : 'desc',
     }),
   );
-  rememberUniverse(listing.body?.instruments);
+  rememberUniverse(listing.body?.stocks);
 
   await ctx.pause(400, 2500);
   if (ctx.rng() < 0.5) await ctx.step(api.movers(ctx.token));
@@ -59,29 +59,29 @@ async function browseMarkets(ctx) {
 
 async function searchAndFilter(ctx) {
   const listing = await ctx.step(
-    api.instruments(ctx.token, { search: pick(ctx.rng, SEARCHES), limit: randomInt(ctx.rng, 5, 25) }),
+    api.stocks(ctx.token, { search: pick(ctx.rng, SEARCHES), limit: randomInt(ctx.rng, 5, 25) }),
   );
-  rememberUniverse(listing.body?.instruments);
+  rememberUniverse(listing.body?.stocks);
 
   await ctx.pause(600, 3000);
   const sectors = await ctx.step(api.sectors(ctx.token));
   const sector = sectors.body?.sectors?.length ? pick(ctx.rng, sectors.body.sectors) : '';
   await ctx.pause(300, 1500);
-  await ctx.step(api.instruments(ctx.token, { sector, sort: 'changePercent', order: 'desc' }));
+  await ctx.step(api.stocks(ctx.token, { sector, sort: 'changePercent', order: 'desc' }));
 }
 
 /** Open a name and look at its chart, sometimes flipping to a second range. */
-async function openInstrument(ctx) {
+async function openStock(ctx) {
   const symbol = await ctx.symbol();
   if (!symbol) return;
 
-  await ctx.step(api.instrument(ctx.token, symbol));
+  await ctx.step(api.stock(ctx.token, symbol));
   await ctx.pause(300, 1800);
-  await ctx.step(api.instrumentHistory(ctx.token, symbol, pick(ctx.rng, HISTORY_RANGES)));
+  await ctx.step(api.stockHistory(ctx.token, symbol, pick(ctx.rng, HISTORY_RANGES)));
 
   if (ctx.rng() < 0.4) {
     await ctx.pause(800, 4000);
-    await ctx.step(api.instrumentHistory(ctx.token, symbol, pick(ctx.rng, HISTORY_RANGES)));
+    await ctx.step(api.stockHistory(ctx.token, symbol, pick(ctx.rng, HISTORY_RANGES)));
   }
 }
 
@@ -176,7 +176,7 @@ async function buyOrder(ctx, cash) {
   const symbol = await ctx.symbol();
   if (!symbol) return null;
 
-  const quote = await ctx.step(api.instrument(ctx.token, symbol));
+  const quote = await ctx.step(api.stock(ctx.token, symbol));
   const price = quote.body?.price;
   if (!(price > 0)) return null;
 
@@ -250,7 +250,7 @@ async function submitIntel(ctx) {
 
 export const activities = [
   { name: 'browse-markets', weight: 22, run: browseMarkets },
-  { name: 'open-instrument', weight: 20, run: openInstrument },
+  { name: 'open-stock', weight: 20, run: openStock },
   { name: 'check-portfolio', weight: 18, run: checkPortfolio },
   { name: 'search-filter', weight: 12, run: searchAndFilter },
   { name: 'review-performance', weight: 8, run: reviewPerformance },

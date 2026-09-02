@@ -15,7 +15,7 @@
 const { realpathSync } = require('node:fs');
 
 const { config } = require('../config/index.js');
-const { INSTRUMENTS, SECTORS } = require('../data/instruments.js');
+const { STOCKS, SECTORS } = require('../data/stocks.js');
 const { createRng, hashString } = require('../lib/random.js');
 const { sessionState } = require('../market/clock.js');
 const {
@@ -88,7 +88,7 @@ Populate the Heads Up Financial demo database.
  * ~270 sessions) and computed once, because the entire point of the factor model
  * is that all 503 names see the *same* market.
  *
- * It depends only on the seed and the dates — never on the instrument list — so
+ * It depends only on the seed and the dates — never on the stock list — so
  * adding or dropping a constituent leaves every other name's history untouched.
  */
 function buildMarketContext(marketSeed, now) {
@@ -111,7 +111,7 @@ function buildMarketContext(marketSeed, now) {
 }
 
 /**
- * One instrument's complete history: ~270 daily bars, today's minute bars, and
+ * One stock's complete history: ~270 daily bars, today's minute bars, and
  * the quote they imply.
  *
  * Generated on demand rather than for the whole universe up front. At 25 symbols
@@ -119,15 +119,15 @@ function buildMarketContext(marketSeed, now) {
  * several hundred megabytes, on a demo box with 2 GiB total. Peak memory is now
  * one symbol's worth.
  */
-function buildInstrumentData(instrument, context, marketSeed) {
-  // Per-symbol stream: adding an instrument does not shift any other's history.
-  const rng = createRng(marketSeed ^ hashString(instrument.symbol));
-  const loadings = factorLoadings(instrument);
+function buildStockData(stock, context, marketSeed) {
+  // Per-symbol stream: adding an stock does not shift any other's history.
+  const rng = createRng(marketSeed ^ hashString(stock.symbol));
+  const loadings = factorLoadings(stock);
 
-  const daily = buildDailyBars(instrument, loadings, context.daily, rng);
-  const previousClose = daily.at(-1)?.close ?? instrument.basePrice;
+  const daily = buildDailyBars(stock, loadings, context.daily, rng);
+  const previousClose = daily.at(-1)?.close ?? stock.basePrice;
   const { bars: intraday, open, price } = buildIntradayBars(
-    instrument,
+    stock,
     loadings,
     previousClose,
     context.intraday,
@@ -154,7 +154,7 @@ function buildInstrumentData(instrument, context, marketSeed) {
   }
 
   return {
-    instrument,
+    stock,
     loadings,
     daily,
     intraday,
@@ -165,11 +165,11 @@ function buildInstrumentData(instrument, context, marketSeed) {
 }
 
 /**
- * Generates and writes the universe one instrument at a time, all inside one
+ * Generates and writes the universe one stock at a time, all inside one
  * transaction — so a failure halfway through still leaves no partial market
  * behind, without holding the whole thing in memory to get that guarantee.
  *
- * @returns {{ instruments: number, bars: number }}
+ * @returns {{ stocks: number, bars: number }}
  */
 async function writeUniverse(marketSeed, now = new Date()) {
   const context = buildMarketContext(marketSeed, now);
@@ -177,16 +177,16 @@ async function writeUniverse(marketSeed, now = new Date()) {
 
   await transaction(async (tx) => {
     // Cascades clear the bars and quotes; accounts survive because positions
-    // reference instruments, which are re-inserted with the same symbols below.
+    // reference stocks, which are re-inserted with the same symbols below.
     await tx.query('TRUNCATE intraday_bars, daily_bars, quotes');
 
-    for (const instrument of INSTRUMENTS) {
-      const entry = buildInstrumentData(instrument, context, marketSeed);
-      const i = entry.instrument;
+    for (const stock of STOCKS) {
+      const entry = buildStockData(stock, context, marketSeed);
+      const i = entry.stock;
       const l = entry.loadings;
 
       await tx.query(
-        `INSERT INTO instruments (symbol, name, sector, industry, currency, exchange, base_price,
+        `INSERT INTO stocks (symbol, name, sector, industry, currency, exchange, base_price,
            volatility, avg_volume, market_cap_b, beta, pe_ratio, dividend_yield,
            sector_loading, idio_volatility, drift_annual,
            fifty_two_week_high, fifty_two_week_low)
@@ -238,14 +238,14 @@ async function writeUniverse(marketSeed, now = new Date()) {
     }
   });
 
-  return { instruments: INSTRUMENTS.length, bars };
+  return { stocks: STOCKS.length, bars };
 }
 
 /**
  * Multi-row INSERT, chunked to stay under Postgres' 65535-parameter cap.
  *
  * The chunk is sized in *parameters*, not rows: 8,000 was ~11 statements per
- * symbol at 25 instruments and is ~2 at 503, which took a meaningful bite out of
+ * symbol at 25 stocks and is ~2 at 503, which took a meaningful bite out of
  * seed time once there were 330,000 bars to write.
  */
 async function insertRows(tx, target, rows, maxParams = 8000) {
@@ -274,7 +274,7 @@ async function seedAccount(username, { skipExisting = true } = {}) {
   }
 
   // Only the symbols this portfolio will actually hold. Reading every bar was
-  // 6,750 rows at 25 instruments and would be 136,000 at 503 — per account, and
+  // 6,750 rows at 25 stocks and would be 136,000 at 503 — per account, and
   // this also runs on a first sign-in, where it would be a page load.
   const symbols = selectPortfolioSymbols(username);
   const { rows: barRows } = await query(
@@ -378,7 +378,7 @@ async function seed(options) {
   await migrate();
 
   const alreadySeeded = await marketDataIsSeeded();
-  let instrumentCount = 0;
+  let stockCount = 0;
   let barCount = 0;
 
   if (alreadySeeded && !options.force && !options.reset) {
@@ -386,9 +386,9 @@ async function seed(options) {
   } else {
     log(`generating market data (seed ${options.marketSeed})`);
     const written = await writeUniverse(options.marketSeed);
-    instrumentCount = written.instruments;
+    stockCount = written.stocks;
     barCount = written.bars;
-    log(`wrote ${instrumentCount} instruments and ${barCount.toLocaleString()} bars`);
+    log(`wrote ${stockCount} stocks and ${barCount.toLocaleString()} bars`);
   }
 
   const created = [];
@@ -404,7 +404,7 @@ async function seed(options) {
     );
   }
 
-  return { instrumentCount, barCount, accountsCreated: created, ms: Date.now() - started };
+  return { stockCount, barCount, accountsCreated: created, ms: Date.now() - started };
 }
 
 // Only run when invoked directly, so tests and the server can require the helpers.

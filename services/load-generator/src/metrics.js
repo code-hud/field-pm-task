@@ -9,7 +9,7 @@
  * on the difference between a p95 of 210ms and 214ms.
  *
  * Labels are route templates supplied by the caller, never request URLs. Keying on
- * `/api/market/instruments/NVAX` would put an entry per symbol in the map, and one
+ * `/api/market/stocks/NVAX` would put an entry per symbol in the map, and one
  * per user id or search term in some future activity — a slow leak that only shows
  * up in week three.
  */

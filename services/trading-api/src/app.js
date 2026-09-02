@@ -68,9 +68,9 @@ function createApp() {
         'POST /api/auth/logout',
         'GET  /api/auth/me',
         'GET  /api/market/status',
-        'GET  /api/market/instruments',
-        'GET  /api/market/instruments/:symbol',
-        'GET  /api/market/instruments/:symbol/history?range=1D|5D|1M|3M|1Y',
+        'GET  /api/market/stocks',
+        'GET  /api/market/stocks/:symbol',
+        'GET  /api/market/stocks/:symbol/history?range=1D|5D|1M|3M|1Y',
         'GET  /api/market/movers',
         'GET  /api/market/sectors',
         'GET  /api/portfolio',
@@ -85,7 +85,7 @@ function createApp() {
   app.use(tagFlow);
   // A pattern on `app.use` populates req.params and still falls through, so the
   // symbol lands on the flow before the router that serves it runs.
-  app.use('/api/market/instruments/:symbol', tagFlow);
+  app.use('/api/market/stocks/:symbol', tagFlow);
 
   app.use('/api/auth', authRouter);
   app.use('/api/market', marketRouter);

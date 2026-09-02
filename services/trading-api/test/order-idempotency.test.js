@@ -53,8 +53,8 @@ const order = (token, payload, key) =>
 const unheldSymbol = async (token, skip = new Set()) => {
   const { body: portfolio } = await authed(token, '/api/portfolio');
   const held = new Set(portfolio.positions.map((position) => position.symbol));
-  const { body: market } = await authed(token, '/api/market/instruments');
-  return market.instruments.find((quote) => !held.has(quote.symbol) && !skip.has(quote.symbol))
+  const { body: market } = await authed(token, '/api/market/stocks');
+  return market.stocks.find((quote) => !held.has(quote.symbol) && !skip.has(quote.symbol))
     .symbol;
 };
 

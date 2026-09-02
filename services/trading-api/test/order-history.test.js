@@ -46,8 +46,8 @@ const order = (token, payload) =>
 const unheldSymbol = async (token, skip = new Set()) => {
   const { body: portfolio } = await authed(token, '/api/portfolio');
   const held = new Set(portfolio.positions.map((position) => position.symbol));
-  const { body: market } = await authed(token, '/api/market/instruments');
-  return market.instruments.find((quote) => !held.has(quote.symbol) && !skip.has(quote.symbol))
+  const { body: market } = await authed(token, '/api/market/stocks');
+  return market.stocks.find((quote) => !held.has(quote.symbol) && !skip.has(quote.symbol))
     .symbol;
 };
 
@@ -112,7 +112,7 @@ describe('order history', () => {
     assert.ok(filled.fillPrice > 0);
     assert.ok(Math.abs(filled.notional - filled.fillPrice * 3) < 0.01);
     assert.ok(filled.tradeId, 'a fill points at its trade');
-    assert.equal(filled.name.length > 0, true, 'and carries the instrument name');
+    assert.equal(filled.name.length > 0, true, 'and carries the stock name');
   });
 
   it('filters by status, and counts what it filtered', async () => {

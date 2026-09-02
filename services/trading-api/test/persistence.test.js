@@ -51,15 +51,15 @@ after(async () => {
 describe('seeding', () => {
   it('populates the full universe', async () => {
     const counts = await db.query(`
-      SELECT (SELECT count(*) FROM instruments)   AS instruments,
+      SELECT (SELECT count(*) FROM stocks)   AS stocks,
              (SELECT count(*) FROM daily_bars)    AS daily,
              (SELECT count(*) FROM intraday_bars) AS intraday,
              (SELECT count(*) FROM quotes)        AS quotes
     `);
     const row = counts.rows[0];
-    const { INSTRUMENTS } = require('../src/data/instruments.js');
-    assert.equal(row.instruments, INSTRUMENTS.length);
-    assert.equal(row.quotes, INSTRUMENTS.length);
+    const { STOCKS } = require('../src/data/stocks.js');
+    assert.equal(row.stocks, STOCKS.length);
+    assert.equal(row.quotes, STOCKS.length);
     assert.ok(row.daily > 130_000, `expected a year of daily bars per name, got ${row.daily}`);
     assert.ok(row.intraday > 0);
   });
@@ -68,7 +68,7 @@ describe('seeding', () => {
     // The seeder derives these and the ticker reads them back; a null column here
     // would silently drop a name out of the factor model.
     const { rows } = await db.query(
-      `SELECT count(*)::int AS n FROM instruments
+      `SELECT count(*)::int AS n FROM stocks
        WHERE industry IS NULL OR sector_loading IS NULL
           OR idio_volatility IS NULL OR drift_annual IS NULL
           OR idio_volatility <= 0 OR beta <= 0`,
@@ -192,7 +192,7 @@ describe('market writer election', () => {
       const after = await db.query('SELECT symbol, price FROM quotes ORDER BY symbol');
 
       const moved = after.rows.filter((row, i) => row.price !== before.rows[i].price);
-      assert.ok(moved.length > 0, 'a tick should reprice at least some instruments');
+      assert.ok(moved.length > 0, 'a tick should reprice at least some stocks');
       assert.ok(
         after.rows.every((row) => row.price > 0),
         'no tick may produce a non-positive price',
@@ -219,7 +219,7 @@ describe('market writer election', () => {
         const { rows } = await db.query('SELECT symbol, price FROM quotes ORDER BY symbol');
         return rows.map((row) => row.price);
       };
-      const { rows: reference } = await db.query('SELECT symbol, beta FROM instruments ORDER BY symbol');
+      const { rows: reference } = await db.query('SELECT symbol, beta FROM stocks ORDER BY symbol');
       const betas = reference.map((row) => Number(row.beta));
 
       // Per-tick returns for every name, so the assertions below are regressions

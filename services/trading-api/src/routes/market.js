@@ -1,7 +1,7 @@
 const { Router } = require('express');
 
 const {
-  countInstruments,
+  countStocks,
   getHistory,
   getHistoryVersion,
   getMovers,
@@ -39,7 +39,7 @@ const MAX_SYMBOLS = 50;
 // Session status is public: the login screen shows it before anyone signs in.
 marketRouter.get('/status', async (_req, res, next) => {
   try {
-    res.json({ ...marketTicker.status, instruments: await countInstruments() });
+    res.json({ ...marketTicker.status, stocks: await countStocks() });
   } catch (error) {
     next(error);
   }
@@ -55,7 +55,7 @@ marketRouter.use(requireAuth);
  * They stay on by default because the markets table wants them, and `sparkline=0`
  * turns them off for callers that only need the numbers.
  */
-marketRouter.get('/instruments', async (req, res, next) => {
+marketRouter.get('/stocks', async (req, res, next) => {
   try {
     const { search = '', sector = '', sort = 'symbol', order = 'asc' } = req.query;
 
@@ -85,7 +85,7 @@ marketRouter.get('/instruments', async (req, res, next) => {
       : new Map();
 
     res.json({
-      instruments: withSparkline
+      stocks: withSparkline
         ? quotes.map((quote) => ({ ...quote, sparkline: sparklines.get(quote.symbol) ?? [] }))
         : quotes,
       total,
@@ -232,7 +232,7 @@ marketRouter.get('/movers', async (req, res, next) => {
   }
 });
 
-marketRouter.get('/instruments/:symbol', async (req, res, next) => {
+marketRouter.get('/stocks/:symbol', async (req, res, next) => {
   try {
     const quote = await getQuote(req.params.symbol);
     if (!quote) {
@@ -249,7 +249,7 @@ marketRouter.get('/instruments/:symbol', async (req, res, next) => {
  * A symbol's bars, and the one market read worth answering conditionally.
  *
  * Everything else here is repriced on a two-second tick, so a validator on
- * `/instruments` would be a new number every time it was asked for. Bars are the
+ * `/stocks` would be a new number every time it was asked for. Bars are the
  * exception, and `getHistoryVersion` has the argument for how far that goes: a 1Y
  * chart is 252 bars that cannot change at all, and today every request for one is
  * answered in full.
@@ -265,7 +265,7 @@ marketRouter.get('/instruments/:symbol', async (req, res, next) => {
  * with every other number on the page until its own clock ran out. Revalidating costs
  * a round trip and is right at every moment in between.
  */
-marketRouter.get('/instruments/:symbol/history', async (req, res, next) => {
+marketRouter.get('/stocks/:symbol/history', async (req, res, next) => {
   try {
     const range = String(req.query.range ?? '1D').toUpperCase();
     if (!HISTORY_RANGES.has(range)) {

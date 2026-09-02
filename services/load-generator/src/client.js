@@ -95,7 +95,7 @@ function classifyNetworkError(error, timedOut) {
 
 /**
  * @param {object} options
- * @param {string} options.label   route template, e.g. `GET /api/market/instruments/:symbol`
+ * @param {string} options.label   route template, e.g. `GET /api/market/stocks/:symbol`
  *                                 — the metrics key, so it must be bounded, not a URL
  * @param {string} options.path    the actual path, with parameters filled in
  * @param {string} [options.baseUrl] which service to call. Defaults to the trading

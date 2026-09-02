@@ -70,7 +70,7 @@ async function dropAll() {
   await pool.query(`
     DROP TABLE IF EXISTS
       orders, lot_closures, trades, dividends, lots, positions, accounts,
-      quotes, intraday_bars, daily_bars, instruments,
+      quotes, intraday_bars, daily_bars, stocks,
       schema_migrations
     CASCADE
   `);

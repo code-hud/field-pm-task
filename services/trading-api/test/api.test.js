@@ -104,18 +104,18 @@ describe('auth', () => {
 
   it('guards protected routes', async () => {
     assert.equal((await call('/api/portfolio')).status, 401);
-    assert.equal((await call('/api/market/instruments')).status, 401);
+    assert.equal((await call('/api/market/stocks')).status, 401);
     assert.equal((await authed('not-a-jwt', '/api/portfolio')).status, 401);
   });
 });
 
 describe('market data', () => {
   it('serves quotes with coherent day ranges', async () => {
-    const { status, body } = await authed(await signIn('quotes'), '/api/market/instruments');
+    const { status, body } = await authed(await signIn('quotes'), '/api/market/stocks');
     assert.equal(status, 200);
-    assert.ok(body.instruments.length >= 20);
+    assert.ok(body.stocks.length >= 20);
 
-    for (const quote of body.instruments) {
+    for (const quote of body.stocks) {
       assert.ok(quote.price > 0, `${quote.symbol} has a positive price`);
       assert.ok(quote.dayLow <= quote.price && quote.price <= quote.dayHigh, `${quote.symbol} sits inside its range`);
       // Strictly positive, and equal to the two sides it is derived from. Cheap
@@ -134,62 +134,62 @@ describe('market data', () => {
 
   it('pages the universe instead of serving all 500 rows', async () => {
     const token = await signIn('paging');
-    const { body: first } = await authed(token, '/api/market/instruments');
+    const { body: first } = await authed(token, '/api/market/stocks');
     // `total` is the size of the match, not of the page — the UI needs both.
     assert.equal(first.limit, 50);
     assert.equal(first.offset, 0);
-    assert.equal(first.instruments.length, 50);
+    assert.equal(first.stocks.length, 50);
     assert.ok(first.total > 480, `expected the S&P 500, got ${first.total}`);
 
-    const { body: second } = await authed(token, '/api/market/instruments?limit=50&offset=50');
+    const { body: second } = await authed(token, '/api/market/stocks?limit=50&offset=50');
     assert.equal(second.offset, 50);
     assert.equal(second.total, first.total);
-    const overlap = new Set(first.instruments.map((q) => q.symbol));
+    const overlap = new Set(first.stocks.map((q) => q.symbol));
     assert.ok(
-      second.instruments.every((quote) => !overlap.has(quote.symbol)),
+      second.stocks.every((quote) => !overlap.has(quote.symbol)),
       'consecutive pages must not repeat a symbol',
     );
 
     // The cap is what stops a client asking for a 350 KB response by accident.
-    const { body: capped } = await authed(token, '/api/market/instruments?limit=5000');
+    const { body: capped } = await authed(token, '/api/market/stocks?limit=5000');
     assert.equal(capped.limit, 250);
 
-    const { body: bare } = await authed(token, '/api/market/instruments?limit=5&sparkline=0');
-    assert.ok(bare.instruments.every((quote) => quote.sparkline === undefined));
+    const { body: bare } = await authed(token, '/api/market/stocks?limit=5&sparkline=0');
+    assert.ok(bare.stocks.every((quote) => quote.sparkline === undefined));
   });
 
   it('filters and sorts', async () => {
     const token = await signIn('filters');
-    const { body: tech } = await authed(token, '/api/market/instruments?sector=Utilities&limit=250');
-    assert.ok(tech.instruments.length > 10);
-    assert.ok(tech.instruments.every((quote) => quote.sector === 'Utilities'));
-    assert.equal(tech.total, tech.instruments.length);
+    const { body: tech } = await authed(token, '/api/market/stocks?sector=Utilities&limit=250');
+    assert.ok(tech.stocks.length > 10);
+    assert.ok(tech.stocks.every((quote) => quote.sector === 'Utilities'));
+    assert.equal(tech.total, tech.stocks.length);
 
-    const { body: sorted } = await authed(token, '/api/market/instruments?sort=changePercent&order=desc');
-    const changes = sorted.instruments.map((quote) => quote.changePercent);
+    const { body: sorted } = await authed(token, '/api/market/stocks?sort=changePercent&order=desc');
+    const changes = sorted.stocks.map((quote) => quote.changePercent);
     assert.deepEqual(changes, [...changes].sort((a, b) => b - a));
 
-    const { body: search } = await authed(token, '/api/market/instruments?search=exxon');
-    assert.equal(search.instruments[0].symbol, 'XOM');
+    const { body: search } = await authed(token, '/api/market/stocks?search=exxon');
+    assert.equal(search.stocks[0].symbol, 'XOM');
     assert.equal(search.total, 1);
   });
 
   it('returns intraday and daily history', async () => {
     const token = await signIn('history');
-    const { body: intraday } = await authed(token, '/api/market/instruments/AAPL/history?range=1D');
+    const { body: intraday } = await authed(token, '/api/market/stocks/AAPL/history?range=1D');
     assert.equal(intraday.interval, '1m');
     assert.ok(intraday.bars.length > 0);
 
-    const { body: monthly } = await authed(token, '/api/market/instruments/AAPL/history?range=1M');
+    const { body: monthly } = await authed(token, '/api/market/stocks/AAPL/history?range=1M');
     assert.equal(monthly.interval, '1d');
     assert.equal(monthly.bars.length, 22);
   });
 
   it('rejects unknown symbols and ranges', async () => {
     const token = await signIn('errors');
-    assert.equal((await authed(token, '/api/market/instruments/NOPE')).status, 404);
-    assert.equal((await authed(token, '/api/market/instruments/AAPL/history?range=7Y')).status, 400);
-    assert.equal((await authed(token, '/api/market/instruments?sort=bogus')).status, 400);
+    assert.equal((await authed(token, '/api/market/stocks/NOPE')).status, 404);
+    assert.equal((await authed(token, '/api/market/stocks/AAPL/history?range=7Y')).status, 400);
+    assert.equal((await authed(token, '/api/market/stocks?sort=bogus')).status, 400);
   });
 
   it('reports movers and sector performance across the whole board', async () => {
@@ -203,8 +203,8 @@ describe('market data', () => {
     const { body: sectors } = await authed(token, '/api/market/sectors');
     assert.equal(sectors.sectors.length, 11, 'all 11 GICS sectors are represented');
     assert.equal(
-      sectors.performance.reduce((total, row) => total + row.instruments, 0),
-      (await authed(token, '/api/market/instruments?limit=1')).body.total,
+      sectors.performance.reduce((total, row) => total + row.stocks, 0),
+      (await authed(token, '/api/market/stocks?limit=1')).body.total,
     );
   });
 });

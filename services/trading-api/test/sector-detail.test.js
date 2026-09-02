@@ -42,7 +42,7 @@ const signIn = async (username) => {
 /** A sector with enough names in it to have leaders and laggards. */
 const someSector = async (token) => {
   const { body } = await authed(token, '/api/market/sectors');
-  return body.performance.find((entry) => entry.instruments >= 6).sector;
+  return body.performance.find((entry) => entry.stocks >= 6).sector;
 };
 
 before(async () => {
@@ -87,10 +87,10 @@ describe('sector detail', () => {
 
     assert.equal(status, 200);
     assert.equal(body.sector, sector);
-    assert.ok(body.instruments >= 6);
+    assert.ok(body.stocks >= 6);
     assert.equal(
       body.breadth.advancing + body.breadth.declining + body.breadth.unchanged,
-      body.instruments,
+      body.stocks,
       'every name in the sector is on exactly one side of the line',
     );
     assert.ok(body.leaders.length > 0 && body.laggards.length > 0);
@@ -106,7 +106,7 @@ describe('sector detail', () => {
     const sector = await someSector(token);
 
     const { rows } = await query(
-      `SELECT symbol, market_cap_b FROM instruments WHERE sector = $1
+      `SELECT symbol, market_cap_b FROM stocks WHERE sector = $1
        ORDER BY market_cap_b DESC`,
       [sector],
     );
@@ -191,7 +191,7 @@ describe('sector detail', () => {
 
   it('is a 404 for a sector that does not exist', async () => {
     // Distinguishable from a sector where nothing moved, which is the reason the
-    // repository checks the instrument count rather than trusting the aggregate row —
+    // repository checks the stock count rather than trusting the aggregate row —
     // count(*) over no rows returns 0, not no row.
     const token = await signIn('sector-missing');
     const { status, body } = await authed(token, '/api/market/sectors/Nonsense');
@@ -203,14 +203,14 @@ describe('sector detail', () => {
   it('agrees with the summary that lists it', async () => {
     const token = await signIn('sector-agrees');
     const { body: summary } = await authed(token, '/api/market/sectors');
-    const entry = summary.performance.find((row) => row.instruments >= 6);
+    const entry = summary.performance.find((row) => row.stocks >= 6);
 
     const { body: detail } = await authed(
       token,
       `/api/market/sectors/${encodeURIComponent(entry.sector)}`,
     );
 
-    assert.equal(detail.instruments, entry.instruments);
+    assert.equal(detail.stocks, entry.stocks);
     // The summary's average is the equal-weighted one, so they have to match.
     assert.equal(detail.equalWeightedChangePercent, entry.averageChangePercent);
   });

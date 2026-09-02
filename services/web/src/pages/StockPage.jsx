@@ -23,17 +23,17 @@ import {
 
 const RANGES = ['1D', '5D', '1M', '3M', '1Y'];
 
-export function InstrumentPage() {
+export function StockPage() {
   const { symbol } = useParams();
   const [range, setRange] = useState('1D');
   // null when closed; otherwise the side the ticket opens on.
   const [ticketSide, setTicketSide] = useState(null);
 
-  const quote = useLiveQuery((signal) => api.instrument(symbol, signal), {
+  const quote = useLiveQuery((signal) => api.stock(symbol, signal), {
     intervalMs: 4000,
     deps: [symbol],
   });
-  const history = useLiveQuery((signal) => api.instrumentHistory(symbol, range, signal), {
+  const history = useLiveQuery((signal) => api.stockHistory(symbol, range, signal), {
     intervalMs: range === '1D' ? 15_000 : 0,
     deps: [symbol, range],
   });

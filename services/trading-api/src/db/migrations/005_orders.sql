@@ -21,7 +21,7 @@
 CREATE TABLE orders (
   id              bigserial PRIMARY KEY,
   account_id      text        NOT NULL REFERENCES accounts (id) ON DELETE CASCADE,
-  symbol          text        NOT NULL REFERENCES instruments (symbol),
+  symbol          text        NOT NULL REFERENCES stocks (symbol),
   side            text        NOT NULL CHECK (side IN ('BUY', 'SELL')),
   -- Only one type exists today. Widening this is a migration, on purpose: a new
   -- order type that reaches the fill path without anyone noticing is exactly the
