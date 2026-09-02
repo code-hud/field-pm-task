@@ -3,21 +3,22 @@
 #   docker compose up --build                       # full stack + UI on :8080
 #   docker compose up --build --scale web=0         # headless (no UI), everything else
 #
-# Two Node services (trading-api, fraud-service) talk to Postgres and report traces to a
-# local Jaeger over OTLP. A load generator drives realistic traffic so there is always
-# something to look at. No account or key needed — open Jaeger at http://localhost:16686.
+# Two Node services (trading-api, fraud-service) talk to Postgres and export traces over
+# OTLP to TWO backends at once: a local Jaeger (always, no signup — http://localhost:16686)
+# and Honeycomb (only when HONEYCOMB_API_KEY is set in .env). A load generator drives
+# realistic traffic so there is always something to look at.
 name: field-pm-task
 
 # Shared OpenTelemetry wiring. The ./otel.js preload must load before Express and pg (that
-# is what NODE_OPTIONS does); it also drops noisy Express middleware spans. Everything else
-# is read from these OTEL_* variables. Jaeger is traces-only, so metrics/logs are off.
+# is what NODE_OPTIONS does); it also drops noisy Express middleware spans and fans traces
+# out to Jaeger + Honeycomb. See services/*/otel.js.
 x-otel-env: &otel-env
   NODE_OPTIONS: "--require ./otel.js"
-  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4318}
-  OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
-  OTEL_TRACES_EXPORTER: otlp
-  OTEL_METRICS_EXPORTER: none
-  OTEL_LOGS_EXPORTER: none
+  JAEGER_OTLP_ENDPOINT: ${JAEGER_OTLP_ENDPOINT:-http://jaeger:4318}
+  # Optional second backend. Empty = Jaeger only. Set it in .env to also see traces in
+  # Honeycomb; use https://api.eu1.honeycomb.io for an EU account.
+  HONEYCOMB_API_KEY: ${HONEYCOMB_API_KEY:-}
+  HONEYCOMB_OTLP_ENDPOINT: ${HONEYCOMB_OTLP_ENDPOINT:-https://api.honeycomb.io}
 
 services:
   # Local trace backend. Open the UI at http://localhost:16686 — no account, no key.
