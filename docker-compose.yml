@@ -1,0 +1,134 @@
+# Local stack for the field PM task.
+#
+#   docker compose up --build                       # full stack + UI on :8080
+#   docker compose up --build --scale web=0         # headless (no UI), everything else
+#
+# Two Node services (trading-api, fraud-service) talk to Postgres and report traces +
+# metrics to SigNoz Cloud over OTLP. A load generator drives realistic traffic so there
+# is always something to look at. Fill in your SigNoz endpoint + token in .env first.
+name: field-pm-task
+
+# Shared OpenTelemetry wiring. The register hook must load before Express and pg, which
+# is what NODE_OPTIONS does; everything else is read from these OTEL_* variables. With no
+# endpoint set the services still run — they just cannot export.
+x-otel-env: &otel-env
+  NODE_OPTIONS: "--require @opentelemetry/auto-instrumentations-node/register"
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+  OTEL_EXPORTER_OTLP_HEADERS: ${OTEL_EXPORTER_OTLP_HEADERS:-}
+  OTEL_EXPORTER_OTLP_PROTOCOL: ${OTEL_EXPORTER_OTLP_PROTOCOL:-http/protobuf}
+  OTEL_TRACES_EXPORTER: otlp
+  OTEL_METRICS_EXPORTER: otlp
+  OTEL_LOGS_EXPORTER: otlp
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    command:
+      - postgres
+      - -c
+      - tcp_keepalives_idle=30
+      - -c
+      - tcp_keepalives_interval=10
+      - -c
+      - tcp_keepalives_count=3
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-headsup}
+      POSTGRES_USER: ${POSTGRES_USER:-headsup}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-headsup}
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-headsup} -d ${POSTGRES_DB:-headsup} -q && psql -U ${POSTGRES_USER:-headsup} -d ${POSTGRES_DB:-headsup} -c "select 1" -tA >/dev/null']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+
+  trading-api:
+    build:
+      context: ./services/trading-api
+    environment:
+      <<: *otel-env
+      OTEL_SERVICE_NAME: trading-api
+      NODE_ENV: development
+      PORT: 4000
+      DATABASE_URL: postgres://headsup:headsup@postgres:5432/headsup
+      JWT_SECRET: ${JWT_SECRET:-local-demo-secret}
+      MARKET_SEED: ${MARKET_SEED:-20260803}
+      MARKET_TICK_INTERVAL_MS: ${MARKET_TICK_INTERVAL_MS:-2000}
+      # Migrate + seed on first boot against an empty volume, so `up` on a clean machine
+      # produces a working, populated database with no extra step.
+      DB_MIGRATE_ON_BOOT: 'true'
+      DB_SEED_ON_BOOT: 'true'
+      FRAUD_SERVICE_URL: http://fraud-service:4100
+      FRAUD_TIMEOUT_MS: ${FRAUD_TIMEOUT_MS:-1000}
+      FRAUD_FAIL_OPEN: ${FRAUD_FAIL_OPEN:-true}
+      # Simulated latency is OFF: every millisecond in a trace is real work.
+      ORDER_LATENCY: 'false'
+    # Bind-mount the source and hot-reload, so editing a query and watching the trace
+    # change needs nothing but a file save — no rebuild, no Node on the host.
+    volumes:
+      - ./services/trading-api/src:/app/src
+    command: ['npm', 'run', 'dev']
+    depends_on:
+      postgres:
+        condition: service_healthy
+      fraud-service:
+        condition: service_started
+    ports:
+      - '${API_PORT:-4000}:4000'
+    restart: unless-stopped
+
+  fraud-service:
+    build:
+      context: ./services/fraud-service
+    environment:
+      <<: *otel-env
+      OTEL_SERVICE_NAME: fraud-service
+      PORT: 4100
+      LOG_LEVEL: ${FRAUD_LOG_LEVEL:-info}
+    volumes:
+      - ./services/fraud-service/src:/app/src
+    command: ['npm', 'run', 'dev']
+    ports:
+      - '${FRAUD_PORT:-4100}:4100'
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./services/web
+    environment:
+      TRADING_API_URL: ${TRADING_API_URL:-http://trading-api:4000}
+      API_BASE_URL: ${API_BASE_URL:-/api}
+    ports:
+      - '${WEB_PORT:-8080}:8080'
+    depends_on:
+      trading-api:
+        condition: service_started
+    restart: unless-stopped
+
+  # Synthetic traffic — a client of the API over the compose network, like the browser.
+  # On by default here (unlike the original demo) so there is always data to look at.
+  load-generator:
+    build:
+      context: ./services/load-generator
+    environment:
+      LOADGEN_BASE_URL: http://trading-api:4000
+      LOADGEN_USERS: ${LOADGEN_USERS:-12}
+      LOADGEN_TRADE_WEIGHT: ${LOADGEN_TRADE_WEIGHT:-6}
+      LOADGEN_DURATION_SEC: '0'
+      LOADGEN_SEED: ${LOADGEN_SEED:-20260803}
+      LOADGEN_DAY_SHAPE: ${LOADGEN_DAY_SHAPE:-true}
+      # No intel service in this stack — leaving this empty disables that traffic.
+      LOADGEN_INTEL_BASE_URL: ''
+    depends_on:
+      trading-api:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

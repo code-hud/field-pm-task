@@ -1,0 +1,48 @@
+server {
+    listen       ${NGINX_PORT};
+    server_name  _;
+    root         /usr/share/nginx/html;
+
+    # Rendered at container start by the base image's envsubst entrypoint, so
+    # ${TRADING_API_URL} below is a literal by the time nginx parses this file.
+
+    gzip              on;
+    gzip_types        text/css application/javascript application/json image/svg+xml;
+    gzip_min_length   1024;
+    server_tokens     off;
+
+    location = /healthz {
+        access_log off;
+        add_header Content-Type text/plain;
+        return 200 "ok\n";
+    }
+
+    # Runtime config — never cached, or a redeploy would keep the old API URL.
+    location = /config.js {
+        add_header Cache-Control "no-store";
+        try_files /config.js =404;
+    }
+
+    # Content-hashed build output is safe to cache forever.
+    location /assets/ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
+    }
+
+    location /api/ {
+        proxy_pass         ${TRADING_API_URL}/api/;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout    30s;
+    }
+
+    # Client-side routing: unknown paths are app routes, not 404s.
+    location / {
+        add_header Cache-Control "no-cache";
+        try_files $uri $uri/ /index.html;
+    }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "@fpd/load-generator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Synthetic traffic for the Heads Up Financial demo — virtual users that browse, chart, and trade",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/main.js",
+    "dev": "node --watch-path=./src --watch-preserve-output src/main.js"
+  }
+}

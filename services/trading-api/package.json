@@ -1,0 +1,29 @@
+{
+  "name": "trading-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Trading API for the field PM task — auth, portfolios, orders, and simulated market data over Postgres",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch-path=./src --watch-preserve-output src/server.js",
+    "test": "ORDER_LATENCY=false node --test \"test/**/*.test.js\"",
+    "seed": "node src/db/seed.js",
+    "db:reset": "node src/db/seed.js --reset"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.52.0",
+    "axios": "^1.19.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "pg": "^8.22.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}

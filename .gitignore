@@ -1,0 +1,47 @@
+node_modules/
+dist/
+build/
+coverage/
+
+# Gradle's per-project caches. `gradle/wrapper/` IS committed on purpose — the wrapper
+# jar and its properties are how the Gradle version stays pinned for CI, the Docker
+# build, and a laptop alike.
+.gradle/
+
+.env
+.env.local
+.env.*.local
+
+npm-debug.log*
+yarn-error.log*
+*.tsbuildinfo
+
+# Terraform. State must never be committed — it
+# contains the generated JWT and Postgres secrets in plaintext.
+infra/.terraform/
+# .terraform.lock.hcl IS committed on purpose — it pins provider versions so CI and
+# a laptop resolve the same ones.
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.auto.tfvars
+terraform.tfvars
+crash.log
+
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+infra/tfplan
+
+# Python bytecode and test caches. The market-intel suite runs on Python 3.13, which
+# the laptop does not have — so it runs in a container with the source tree mounted,
+# and the interpreter writes __pycache__ back into it as root. Six .pyc files reached
+# main that way before this existed.
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
+# Agent worktrees — scratch checkouts, never part of the repo.
+.claude/worktrees/
