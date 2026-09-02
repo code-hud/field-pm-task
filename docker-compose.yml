@@ -4,8 +4,8 @@
 #   docker compose up --build --scale web=0         # headless (no UI), everything else
 #
 # Two Node services (trading-api, fraud-service) talk to Postgres and report traces +
-# metrics to SigNoz Cloud over OTLP. A load generator drives realistic traffic so there
-# is always something to look at. Fill in your SigNoz endpoint + token in .env first.
+# metrics to Honeycomb over OTLP. A load generator drives realistic traffic so there
+# is always something to look at. Fill in your Honeycomb API key in .env first.
 name: field-pm-task
 
 # Shared OpenTelemetry wiring. The register hook must load before Express and pg, which

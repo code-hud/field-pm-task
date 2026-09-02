@@ -59,7 +59,7 @@ demo with no extra step. Both behaviours are switchable
 | `src/data/sp500-constituents.csv` | the committed constituent list — provenance in `instruments.js` |
 | `src/lib/random.js` | seeded PRNG — the data layer never calls `Math.random` |
 
-Set the `OTEL_EXPORTER_OTLP_*` variables (see the root README) to report traces + metrics to SigNoz; with no
+Set the `OTEL_EXPORTER_OTLP_*` variables (see the root README) to report traces + metrics to Honeycomb; with no
 key the API logs one line at boot and runs exactly as it did before, which is how the
 tests and CI run it. See *Runtime observability* in the root README for what is
 covered and why this service is CommonJS.
