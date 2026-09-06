@@ -16,7 +16,6 @@ assignment you were sent — this file is just how to get it running.
                             Postgres
 
   trading-api and fraud-service export traces (OTLP) ──▶ Jaeger (local, :16686)
-                                                     └──▶ Honeycomb (optional, with a key)
 ```
 
 - **trading-api** — auth, portfolios, orders, and a simulated market. Owns the Postgres database.
@@ -35,20 +34,9 @@ make up            # full stack + UI at http://localhost:8080
 
 The database migrates and seeds itself on first boot (~30–60s).
 
-**Jaeger (always on, no signup):** open **http://localhost:16686**, pick the `trading-api`
-service and **Find Traces**. Click a trace for the waterfall — the HTTP request, its call to
-`fraud-service`, and the `pg` query spans underneath.
-
-**Honeycomb (optional second view):** sign up free at https://www.honeycomb.io (Gmail
-works), create an ingest key, then:
-
-```bash
-cp .env.example .env
-# set HONEYCOMB_API_KEY in .env, then:
-docker compose up -d
-```
-
-The same traces now appear in Honeycomb too. Jaeger keeps working either way.
+Open **Jaeger at http://localhost:16686**, pick the `trading-api` service and **Find
+Traces**. Click a trace for the waterfall — the HTTP request, its call to `fraud-service`,
+and the `pg` query spans underneath.
 
 Running low on resources or hitting setup trouble? **Contact us** — don't lose time on it.
 
@@ -80,5 +68,4 @@ make down            # stop
 - Each service is instrumented with OpenTelemetry auto-instrumentation (HTTP, Express,
   `pg`). The wiring is in `docker-compose.yml` (the `OTEL_*` variables) and `otel.js` in
   each service — nothing in the app code turns telemetry on.
-- Traces always go to the bundled Jaeger, and *also* to Honeycomb when `HONEYCOMB_API_KEY`
-  is set in `.env`. The fan-out lives in each service's `otel.js`.
+- Traces go to the bundled Jaeger. The exporter wiring lives in each service's `otel.js`.
