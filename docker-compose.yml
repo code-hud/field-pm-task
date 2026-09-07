@@ -1,22 +1,11 @@
-# Local stack for the field PM task.
-#
-#   docker compose up --build                       # full stack + UI on :8080
-#   docker compose up --build --scale web=0         # headless (no UI), everything else
-#
-# Two Node services (trading-api, fraud-service) talk to Postgres and export traces over
-# OTLP to a local Jaeger — open http://localhost:16686. A load generator drives realistic
-# traffic so there is always something to look at.
+# Local stack. Start it with `docker compose up --build` (add `--scale web=0` for no UI).
 name: field-pm-task
 
-# Shared OpenTelemetry wiring. The ./otel.js preload must load before Express and pg (that
-# is what NODE_OPTIONS does); it also drops noisy Express middleware spans. See services/*/otel.js.
-x-otel-env: &otel-env
+x-runtime-env: &runtime-env
   NODE_OPTIONS: "--require ./otel.js"
   JAEGER_OTLP_ENDPOINT: ${JAEGER_OTLP_ENDPOINT:-http://jaeger:4318}
 
 services:
-  # Local trace backend. Open the UI at http://localhost:16686 — no account, no key.
-  # OTLP receivers (4317/4318) stay internal; the services reach it at jaeger:4318.
   jaeger:
     image: jaegertracing/all-in-one:1.62.0
     environment:
@@ -56,7 +45,7 @@ services:
     build:
       context: ./services/trading-api
     environment:
-      <<: *otel-env
+      <<: *runtime-env
       OTEL_SERVICE_NAME: trading-api
       NODE_ENV: development
       PORT: 4000
@@ -71,10 +60,7 @@ services:
       FRAUD_SERVICE_URL: http://fraud-service:4100
       FRAUD_TIMEOUT_MS: ${FRAUD_TIMEOUT_MS:-1000}
       FRAUD_FAIL_OPEN: ${FRAUD_FAIL_OPEN:-true}
-      # Simulated latency is OFF: every millisecond in a trace is real work.
-      ORDER_LATENCY: 'false'
-    # Bind-mount the source and hot-reload, so editing a query and watching the trace
-    # change needs nothing but a file save — no rebuild, no Node on the host.
+    # Bind-mount the source so edits hot-reload without a rebuild.
     volumes:
       - ./services/trading-api/src:/app/src
     command: ['npm', 'run', 'dev']
@@ -93,7 +79,7 @@ services:
     build:
       context: ./services/fraud-service
     environment:
-      <<: *otel-env
+      <<: *runtime-env
       OTEL_SERVICE_NAME: fraud-service
       PORT: 4100
       LOG_LEVEL: ${FRAUD_LOG_LEVEL:-info}
@@ -120,8 +106,7 @@ services:
         condition: service_started
     restart: unless-stopped
 
-  # Synthetic traffic — a client of the API over the compose network, like the browser.
-  # On by default here (unlike the original demo) so there is always data to look at.
+  # Synthetic traffic against the API.
   load-generator:
     build:
       context: ./services/load-generator

@@ -1,7 +1,3 @@
-// The OpenTelemetry `pg` instrumentation patches the Client prototype when the module
-// is loaded, which is how every query becomes a span. The auto-instrumentation register
-// hook loads before this module (see docker-compose.yml), so the patch is in place by
-// the time the pool below is created.
 const pg = require('pg');
 
 const { config } = require('../config/index.js');
