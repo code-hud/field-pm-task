@@ -77,27 +77,7 @@ const config = {
   },
 
   orders: {
-    /**
-     * The simulated cost of a fill, on top of what the fill actually spends.
-     *
-     * A market order here is a handful of indexed statements against small tables — the
-     * whole endpoint averages ~14ms, and `Client.query()` averages 0.1ms across nine
-     * queries. That is an honest measurement and a useless distribution: p50 and p90 a
-     * few milliseconds apart, no tail, nothing for a latency graph to show. So a cost is
-     * added, and it is added *outside* the transaction — see orderService.js, which is
-     * where holding the account's row lock while sleeping would be a genuine bug rather
-     * than an aesthetic one.
-     *
-     * Sized to stay well clear of a typical latency alert floor (~150ms on this
-     * account): with fraud screening's own simulated cost on top, order p90 lands near
-     * 45ms at the busiest hour and p99 near 75ms. The stalls reach ~400ms occasionally,
-     * which is a visible outlier and still not an alert.
-     */
     latency: {
-      // `npm test` sets ORDER_LATENCY=false. The suite places a few hundred orders and
-      // has no interest in what they cost; leaving it on would spend seconds of every run
-      // on sleeps and would make the runtime depend on the hour the suite happens to run
-      // at. The timing model itself is tested directly, in test/daypart.test.js.
       enabled: bool(process.env.ORDER_LATENCY, false),
       dayShape: bool(process.env.ORDER_LATENCY_DAY_SHAPE, true),
       baseMs: num(process.env.ORDER_LATENCY_BASE_MS, 5),
@@ -106,8 +86,6 @@ const config = {
       stallProbability: float(process.env.ORDER_LATENCY_STALL_PROBABILITY, 0.008),
       stallMinMs: num(process.env.ORDER_LATENCY_STALL_MIN_MS, 80),
       stallMaxMs: num(process.env.ORDER_LATENCY_STALL_MAX_MS, 350),
-      // Hard ceiling. Well under the alert floor, and well under anything a browser or
-      // the load generator's 15s request timeout would notice.
       maxMs: num(process.env.ORDER_LATENCY_MAX_MS, 500),
     },
   },
